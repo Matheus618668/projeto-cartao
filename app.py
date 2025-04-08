@@ -54,17 +54,24 @@ def upload_to_drive(file, empresa):
         tmp_path = tmp.name
 
     filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.name}"
-    gfile = drive.CreateFile({'title': filename, 'parents': [{'id': folder_id}]})
-    gfile.SetContentFile(tmp_path)
-    gfile.Upload()
-    os.remove(tmp_path)
 
-    gfile.InsertPermission({
-        'type': 'anyone',
-        'value': 'anyone',
-        'role': 'reader'
-    })
-    return gfile['alternateLink']
+    try:
+        gfile = drive.CreateFile({'title': filename, 'parents': [{'id': folder_id}]})
+        gfile.SetContentFile(tmp_path)
+        gfile.Upload()
+        os.remove(tmp_path)
+
+        gfile.InsertPermission({
+            'type': 'anyone',
+            'value': 'anyone',
+            'role': 'reader'
+        })
+
+        return gfile['alternateLink']
+
+    except Exception as e:
+        st.error(f"❌ Erro ao fazer upload para o Drive: {e}")
+        st.stop()
 
 # ================================
 # 5. Configurações do app
