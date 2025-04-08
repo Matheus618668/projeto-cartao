@@ -14,10 +14,15 @@ gc = gspread.authorize(credentials)
 SHEET_ID = "1CcrV5Gs3LwrLXgjLBgk2M02SAnDVJGuHhqY_pi56Mnw"
 worksheet = gc.open_by_key(SHEET_ID).sheet1
 
-# Caminhos locais
+# Caminhos
 data_file = "data/compras.xlsx"
-comprovante_folder = r"G:\Drives compartilhados\Moon Ventures - Admin Fin\Comprovantes"
-os.makedirs(comprovante_folder, exist_ok=True)
+base_comprovante_path = r"G:\Drives compartilhados\Moon Ventures - Admin Fin\Comprovantes"
+
+# Verifica se pasta da rede existe
+if not os.path.exists(base_comprovante_path):
+    st.error("❌ Pasta de comprovantes não encontrada. Verifique se o disco G: está conectado.")
+    st.stop()
+
 os.makedirs("data", exist_ok=True)
 
 # Colunas esperadas
@@ -33,9 +38,29 @@ st.set_page_config(page_title="Validador de Compras", layout="centered")
 st.title("🧾 Validador de Compras com Cartão de Crédito")
 st.subheader("Inserção de Dados da Compra")
 
+# Lista de cartões
+cartoes = [
+    "Inter Moon Ventures",
+    "Inter Minimal",
+    "Inter Hoomy",
+    "Bradesco Minimal",
+    "Bradesco Hoomy",
+    "Bradesco Moon Ventures"
+]
+
+# Mapeamento cartão → empresa
+mapa_empresas = {
+    "Inter Moon Ventures": "Moon Ventures",
+    "Bradesco Moon Ventures": "Moon Ventures",
+    "Inter Minimal": "Minimal Club",
+    "Bradesco Minimal": "Minimal Club",
+    "Inter Hoomy": "Hoomy",
+    "Bradesco Hoomy": "Hoomy"
+}
+
 # Entradas
 data = datetime.today().strftime('%Y-%m-%d')
-cartão = st.text_input("💳 Nome do cartão")
+cartão = st.selectbox("💳 Nome do cartão", cartoes)
 fornecedor = st.text_input("📦 Nome do Fornecedor")
 valor = st.number_input("💰 Valor da Compra", min_value=0.0, format="%.2f")
 parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"])
@@ -46,19 +71,23 @@ comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "p
 # Botão de salvar
 if st.button("✅ Salvar Compra"):
     if fornecedor and valor > 0 and comprador and cartão:
-        # Salvar comprovante localmente
+        # Define empresa
+        empresa = mapa_empresas.get(cartão, "Outros")
+        pasta_empresa = os.path.join(base_comprovante_path, empresa)
+        os.makedirs(pasta_empresa, exist_ok=True)
+
+        # Salvar comprovante
         comprovante_path = ""
         filename = "Nenhum"
         if comprovante:
             filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{comprovante.name}"
-            comprovante_path = os.path.join(comprovante_folder, filename)
+            comprovante_path = os.path.join(pasta_empresa, filename)
             with open(comprovante_path, "wb") as f:
                 f.write(comprovante.read())
 
         # Atualizar planilha local
         df = pd.read_excel(data_file)
 
-        # Corrigir colunas se necessário
         if list(df.columns) != colunas_corretas:
             df = df.reindex(columns=colunas_corretas)
 
