@@ -3,9 +3,14 @@ import pandas as pd
 import os
 from datetime import datetime
 import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
-# Conectar com o Google Sheets (credenciais)
-gc = gspread.service_account(filename="credentials.json")  # Arquivo JSON salvo no projeto
+# Conectar com o Google Sheets (usando secrets da Streamlit)
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+credentials_dict = st.secrets["google_service_account"]
+credentials = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+gc = gspread.authorize(credentials)
+
 SHEET_ID = "1CcrV5Gs3LwrLXgjLBgk2M02SAnDVJGuHhqY_pi56Mnw"
 worksheet = gc.open_by_key(SHEET_ID).sheet1
 
