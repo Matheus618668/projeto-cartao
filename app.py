@@ -126,12 +126,23 @@ if menu == "Inserir Compra":
 
     # Botão de salvar
     if st.button("✅ Salvar Compra"):
-        if fornecedor and valor > 0 and comprador and cartão:
-            empresa = mapa_empresas.get(cartão, "Outros")
+        erros = []
+        if not fornecedor:
+            erros.append("Fornecedor não informado.")
+        if valor <= 0:
+            erros.append("Valor deve ser maior que zero.")
+        if not comprador:
+            erros.append("Nome do comprador não informado.")
+        if not cartão:
+            erros.append("Cartão não selecionado.")
+        if not comprovante:
+            erros.append("Comprovante não anexado.")
 
-            link_drive = "Nenhum"
-            if comprovante:
-                link_drive = upload_to_drive(comprovante, empresa)
+        if erros:
+            st.error("\n".join(["❌ " + erro for erro in erros]))
+        else:
+            empresa = mapa_empresas.get(cartão, "Outros")
+            link_drive = upload_to_drive(comprovante, empresa)
 
             df = pd.read_excel(data_file)
             if list(df.columns) != colunas_corretas:
@@ -147,8 +158,6 @@ if menu == "Inserir Compra":
             worksheet.append_row([data, cartão, fornecedor, valor, parcelado, parcelas, comprador, link_drive])
 
             st.success("✅ Compra registrada com sucesso!")
-        else:
-            st.error("❌ Por favor, preencha todos os campos obrigatórios.")
 
 # ================================
 # 7. Página: Visualização de Compras (direto do Google Sheets)
@@ -156,11 +165,9 @@ if menu == "Inserir Compra":
 elif menu == "Visualizar Compras":
     st.subheader("📊 Visualização de Compras Registradas")
 
-    # Ler direto do Google Sheets
     rows = worksheet.get_all_records()
     df = pd.DataFrame(rows)
 
-    # Filtros interativos
     col1, col2 = st.columns(2)
     with col1:
         filtro_cartao = st.selectbox("Filtrar por Cartão:", options=["Todos"] + sorted(df["Cartão"].dropna().unique().tolist()))
@@ -174,7 +181,6 @@ elif menu == "Visualizar Compras":
 
     st.dataframe(df, use_container_width=True)
 
-    # Gráfico de gastos por cartão
     st.markdown("---")
     st.markdown("### 💳 Gastos por Cartão")
     if not df.empty:
