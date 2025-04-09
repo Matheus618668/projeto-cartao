@@ -93,8 +93,8 @@ cartoes = [
     "Inter Minimal",
     "Inter Hoomy",
     "Bradesco Minimal",
-    "Bradesco Hoomy",
-    "Bradesco Moon Ventures"
+    "Conta Simples Hoomy",
+    "Conta Simples Moon Ventures"
 ]
 mapa_empresas = {
     "Inter Moon Ventures": "Moon Ventures",
