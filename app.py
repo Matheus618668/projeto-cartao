@@ -78,7 +78,7 @@ def upload_to_drive(file, empresa):
 # ================================
 data_file = "data/compras.xlsx"
 os.makedirs("data", exist_ok=True)
-colunas_corretas = ["Data", "Cartão", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Descrição", "Comprovante"]
+colunas_corretas = ["Data", "Cartão", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Parcela Atual", "Comprador", "Descrição", "Comprovante"]
 
 if not os.path.exists(data_file):
     df = pd.DataFrame(columns=colunas_corretas)
@@ -155,14 +155,16 @@ if menu == "Inserir Compra":
 
             novas_linhas = []
             for i in range(parcelas):
+                parcela_atual = f"{i+1}/{parcelas}" if parcelas > 1 else "1/1"
                 novas_linhas.append([
-                    data, cartão, fornecedor, valor, parcelado, parcelas, valor_parcela, comprador, descricao, link_drive
+                    data, cartão, fornecedor, valor, parcelado, parcelas, valor_parcela, parcela_atual, comprador, descricao, link_drive
                 ])
+
             df = pd.concat([df, pd.DataFrame(novas_linhas, columns=colunas_corretas)], ignore_index=True)
             df.to_excel(data_file, index=False)
 
-            for _ in range(parcelas):
-                worksheet.append_row([data, cartão, fornecedor, valor, parcelado, parcelas, valor_parcela, comprador, descricao, link_drive])
+            for linha in novas_linhas:
+                worksheet.append_row(linha)
 
             st.success("✅ Compra registrada com sucesso!")
 
@@ -175,16 +177,21 @@ elif menu == "Visualizar Compras":
     rows = worksheet.get_all_records()
     df = pd.DataFrame(rows)
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         filtro_cartao = st.selectbox("Filtrar por Cartão:", options=["Todos"] + sorted(df["Cartão"].dropna().unique().tolist()))
     with col2:
         filtro_comprador = st.selectbox("Filtrar por Comprador:", options=["Todos"] + sorted(df["Comprador"].dropna().unique().tolist()))
+    with col3:
+        filtro_empresa = st.selectbox("Filtrar por Empresa:", options=["Todos", "Moon Ventures", "Minimal Club", "Hoomy"])
 
     if filtro_cartao != "Todos":
         df = df[df["Cartão"] == filtro_cartao]
     if filtro_comprador != "Todos":
         df = df[df["Comprador"] == filtro_comprador]
+    if filtro_empresa != "Todos":
+        cartoes_empresa = [k for k, v in mapa_empresas.items() if v == filtro_empresa]
+        df = df[df["Cartão"].isin(cartoes_empresa)]
 
     st.dataframe(df, use_container_width=True)
 
