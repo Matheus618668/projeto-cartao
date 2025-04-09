@@ -32,49 +32,48 @@ SHEET_ID = "1CcrV5Gs3LwrLXgjLBgk2M02SAnDVJGuHhqY_pi56Mnw"
 worksheet = gc.open_by_key(SHEET_ID).sheet1
 
 # ================================
-# 3. IDs das pastas fixas no Google Drive
-# ================================
-PASTAS_EMPRESA = {
-    "Moon Ventures": "1IdJl9n5l3OG6OudbqJmiJaPrzUskgcjY",
-    "Minimal Club": "1bnK4KzsDOZDb0szxEo3H2bplFQcmhen7",
-    "Hoomy": "1dyoMhSu-Xmu1B5qvRAcyF9ESEs-DzC7O"
-}
-
-# ================================
-# 4. Função para upload no Google Drive
+# 3. Função para upload no Google Drive
 # ================================
 def upload_to_drive(file, empresa):
-    folder_id = PASTAS_EMPRESA.get(empresa)
-    if not folder_id:
-        st.error(f"❌ ID da pasta não encontrado para a empresa: {empresa}")
-        st.stop()
+    # Cria pasta se não existir (cache em memoria por sessão)
+    if "folders" not in st.session_state:
+        st.session_state.folders = {}
 
+    if empresa not in st.session_state.folders:
+        folder_metadata = {
+            'title': empresa,
+            'mimeType': 'application/vnd.google-apps.folder'
+        }
+        folder = drive.CreateFile(folder_metadata)
+        folder.Upload()
+        st.session_state.folders[empresa] = folder['id']
+    else:
+        folder_id = st.session_state.folders[empresa]
+
+    # Salvar arquivo temporário
     with tempfile.NamedTemporaryFile(delete=False) as tmp:
         tmp.write(file.read())
         tmp_path = tmp.name
 
+    # Upload para o Drive
     filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.name}"
+    gfile = drive.CreateFile({'title': filename, 'parents': [{'id': st.session_state.folders[empresa]}]})
+    gfile.SetContentFile(tmp_path)
+    gfile.Upload()
 
-    try:
-        gfile = drive.CreateFile({'title': filename, 'parents': [{'id': folder_id}]})
-        gfile.SetContentFile(tmp_path)
-        gfile.Upload()
-        os.remove(tmp_path)
+    # Deletar arquivo temporário
+    os.remove(tmp_path)
 
-        gfile.InsertPermission({
-            'type': 'anyone',
-            'value': 'anyone',
-            'role': 'reader'
-        })
-
-        return gfile['alternateLink']
-
-    except Exception as e:
-        st.error(f"❌ Erro ao fazer upload para o Drive: {e}")
-        st.stop()
+    # Gerar link público
+    gfile.InsertPermission({
+        'type': 'anyone',
+        'value': 'anyone',
+        'role': 'reader'
+    })
+    return gfile['alternateLink']
 
 # ================================
-# 5. Configurações do app
+# 4. Configurações do app
 # ================================
 data_file = "data/compras.xlsx"
 os.makedirs("data", exist_ok=True)
@@ -85,7 +84,7 @@ if not os.path.exists(data_file):
     df.to_excel(data_file, index=False)
 
 st.set_page_config(page_title="Validador de Compras", layout="centered")
-st.title("🧾 Validador de Compras com Cartão de Crédito")
+st.title("📟 Validador de Compras com Cartão de Crédito")
 st.subheader("Inserção de Dados da Compra")
 
 cartoes = [
