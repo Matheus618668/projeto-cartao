@@ -86,57 +86,93 @@ if not os.path.exists(data_file):
 
 st.set_page_config(page_title="Validador de Compras", layout="centered")
 st.title("🧾 Validador de Compras com Cartão de Crédito")
-st.subheader("Inserção de Dados da Compra")
 
-cartoes = [
-    "Inter Moon Ventures",
-    "Inter Minimal",
-    "Inter Hoomy",
-    "Bradesco Minimal",
-    "Conta Simples Hoomy",
-    "Conta Simples Moon Ventures"
-]
-mapa_empresas = {
-    "Inter Moon Ventures": "Moon Ventures",
-    "Bradesco Moon Ventures": "Moon Ventures",
-    "Inter Minimal": "Minimal Club",
-    "Bradesco Minimal": "Minimal Club",
-    "Inter Hoomy": "Hoomy",
-    "Bradesco Hoomy": "Hoomy"
-}
+menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar Compras"])
 
-# Entradas
-data = datetime.today().strftime('%Y-%m-%d')
-cartão = st.selectbox("💳 Nome do cartão", cartoes)
-fornecedor = st.text_input("📦 Nome do Fornecedor")
-valor = st.number_input("💰 Valor da Compra", min_value=0.0, format="%.2f")
-parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"])
-parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=1) if parcelado == "Sim" else 1
-comprador = st.text_input("👤 Nome do Comprador")
-comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
+# ================================
+# 6. Página: Inserção de Dados
+# ================================
+if menu == "Inserir Compra":
+    st.subheader("Inserção de Dados da Compra")
 
-# Botão de salvar
-if st.button("✅ Salvar Compra"):
-    if fornecedor and valor > 0 and comprador and cartão:
-        empresa = mapa_empresas.get(cartão, "Outros")
+    cartoes = [
+        "Inter Moon Ventures",
+        "Inter Minimal",
+        "Inter Hoomy",
+        "Bradesco Minimal",
+        "Conta Simples Hoomy",
+        "Conta Simples Moon Ventures"
+    ]
+    mapa_empresas = {
+        "Inter Moon Ventures": "Moon Ventures",
+        "Bradesco Moon Ventures": "Moon Ventures",
+        "Inter Minimal": "Minimal Club",
+        "Bradesco Minimal": "Minimal Club",
+        "Inter Hoomy": "Hoomy",
+        "Bradesco Hoomy": "Hoomy",
+        "Conta Simples Hoomy": "Hoomy",
+        "Conta Simples Moon Ventures": "Moon Ventures"
+    }
 
-        link_drive = "Nenhum"
-        if comprovante:
-            link_drive = upload_to_drive(comprovante, empresa)
+    # Entradas
+    data = datetime.today().strftime('%Y-%m-%d')
+    cartão = st.selectbox("💳 Nome do cartão", cartoes)
+    fornecedor = st.text_input("📦 Nome do Fornecedor")
+    valor = st.number_input("💰 Valor da Compra", min_value=0.0, format="%.2f")
+    parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"])
+    parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=1) if parcelado == "Sim" else 1
+    comprador = st.text_input("👤 Nome do Comprador")
+    comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
 
-        df = pd.read_excel(data_file)
-        if list(df.columns) != colunas_corretas:
-            df = df.reindex(columns=colunas_corretas)
+    # Botão de salvar
+    if st.button("✅ Salvar Compra"):
+        if fornecedor and valor > 0 and comprador and cartão:
+            empresa = mapa_empresas.get(cartão, "Outros")
 
-        nova_linha = pd.DataFrame(
-            [[data, cartão, fornecedor, valor, parcelado, parcelas, comprador, link_drive]],
-            columns=colunas_corretas
-        )
-        df = pd.concat([df, nova_linha], ignore_index=True)
-        df.to_excel(data_file, index=False)
+            link_drive = "Nenhum"
+            if comprovante:
+                link_drive = upload_to_drive(comprovante, empresa)
 
-        worksheet.append_row([data, cartão, fornecedor, valor, parcelado, parcelas, comprador, link_drive])
+            df = pd.read_excel(data_file)
+            if list(df.columns) != colunas_corretas:
+                df = df.reindex(columns=colunas_corretas)
 
-        st.success("✅ Compra registrada com sucesso!")
-    else:
-        st.error("❌ Por favor, preencha todos os campos obrigatórios.")
+            nova_linha = pd.DataFrame(
+                [[data, cartão, fornecedor, valor, parcelado, parcelas, comprador, link_drive]],
+                columns=colunas_corretas
+            )
+            df = pd.concat([df, nova_linha], ignore_index=True)
+            df.to_excel(data_file, index=False)
+
+            worksheet.append_row([data, cartão, fornecedor, valor, parcelado, parcelas, comprador, link_drive])
+
+            st.success("✅ Compra registrada com sucesso!")
+        else:
+            st.error("❌ Por favor, preencha todos os campos obrigatórios.")
+
+# ================================
+# 7. Página: Visualização de Compras
+# ================================
+elif menu == "Visualizar Compras":
+    st.subheader("📊 Visualização de Compras Registradas")
+    df = pd.read_excel(data_file)
+
+    # Filtros interativos
+    col1, col2 = st.columns(2)
+    with col1:
+        filtro_cartao = st.selectbox("Filtrar por Cartão:", options=["Todos"] + sorted(df["Cartão"].dropna().unique().tolist()))
+    with col2:
+        filtro_comprador = st.selectbox("Filtrar por Comprador:", options=["Todos"] + sorted(df["Comprador"].dropna().unique().tolist()))
+
+    if filtro_cartao != "Todos":
+        df = df[df["Cartão"] == filtro_cartao]
+    if filtro_comprador != "Todos":
+        df = df[df["Comprador"] == filtro_comprador]
+
+    st.dataframe(df, use_container_width=True)
+
+    # Gráfico de gastos por cartão
+    st.markdown("---")
+    st.markdown("### 💳 Gastos por Cartão")
+    grafico = df.groupby("Cartão")["Valor"].sum().reset_index()
+    st.bar_chart(data=grafico, x="Cartão", y="Valor")
