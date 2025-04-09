@@ -78,7 +78,7 @@ def upload_to_drive(file, empresa):
 # ================================
 data_file = "data/compras.xlsx"
 os.makedirs("data", exist_ok=True)
-colunas_corretas = ["Data", "Cartão", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Comprador", "Comprovante"]
+colunas_corretas = ["Data", "Cartão", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Comprador", "Descrição da Compra", "Comprovante"]
 
 if not os.path.exists(data_file):
     df = pd.DataFrame(columns=colunas_corretas)
@@ -122,6 +122,7 @@ if menu == "Inserir Compra":
     parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"])
     parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=1) if parcelado == "Sim" else 1
     comprador = st.text_input("👤 Nome do Comprador")
+    descricao = st.text_area("📝 Descrição da Compra")
     comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
 
     # Botão de salvar
@@ -135,6 +136,8 @@ if menu == "Inserir Compra":
             erros.append("Nome do comprador não informado.")
         if not cartão:
             erros.append("Cartão não selecionado.")
+        if not descricao:
+            erros.append("Descrição da compra não informada.")
         if not comprovante:
             erros.append("Comprovante não anexado.")
 
@@ -149,13 +152,13 @@ if menu == "Inserir Compra":
                 df = df.reindex(columns=colunas_corretas)
 
             nova_linha = pd.DataFrame(
-                [[data, cartão, fornecedor, valor, parcelado, parcelas, comprador, link_drive]],
+                [[data, cartão, fornecedor, valor, parcelado, parcelas, comprador, descricao, link_drive]],
                 columns=colunas_corretas
             )
             df = pd.concat([df, nova_linha], ignore_index=True)
             df.to_excel(data_file, index=False)
 
-            worksheet.append_row([data, cartão, fornecedor, valor, parcelado, parcelas, comprador, link_drive])
+            worksheet.append_row([data, cartão, fornecedor, valor, parcelado, parcelas, comprador, descricao, link_drive])
 
             st.success("✅ Compra registrada com sucesso!")
 
