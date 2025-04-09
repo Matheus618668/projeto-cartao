@@ -121,16 +121,23 @@ if menu == "Inserir Compra":
     data = datetime.today().strftime('%Y-%m-%d')
     cartão = st.selectbox("💳 Nome do cartão", cartoes)
     fornecedor = st.text_input("📦 Nome do Fornecedor")
+
     valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80")
     try:
-        valor = float(valor_str.replace("R$", "").replace(".", "").replace(",", "."))
+        valor_float = float(valor_str.replace("R$", "").replace(".", "").replace(",", "."))
+        valor_formatado = f"R$ {valor_float:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     except:
-        valor = 0.0
+        valor_float = 0.0
+        valor_formatado = "R$ 0,00"
+
+    valor = valor_float
+    st.markdown(f"🔎 Valor interpretado: **{valor_formatado}**")
 
     parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"])
     parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=1) if parcelado == "Sim" else 1
     valor_parcela = valor / parcelas if parcelas > 0 else 0.0
     st.markdown(f"💵 **Valor de cada parcela:** R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+
     comprador = st.text_input("👤 Nome do Comprador")
     descricao = st.text_area("📝 Descrição da Compra")
     comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
