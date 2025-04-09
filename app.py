@@ -101,7 +101,7 @@ def upload_to_drive(file, empresa):
 # ================================
 data_file = "data/compras.xlsx"
 os.makedirs("data", exist_ok=True)
-colunas_corretas = ["Data", "Cartão", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Descrição", "Comprovante"]
+colunas_corretas = ["Data", "Cartão", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante"]
 
 if not os.path.exists(data_file):
     df = pd.DataFrame(columns=colunas_corretas)
@@ -160,9 +160,8 @@ if menu == "Inserir Compra":
             novas_linhas = []
             for i in range(parcelas):
                 parcela_atual = f"{i+1}/{parcelas}" if parcelas > 1 else "1/1"
-                comprador_parcelado = f"{comprador} ({parcela_atual})" if parcelas > 1 else comprador
                 novas_linhas.append([
-                    data, cartão, fornecedor, valor, parcelado, parcelas, valor_parcela, comprador_parcelado, descricao, link_drive
+                    data, cartão, fornecedor, valor, parcelado, parcelas, valor_parcela, comprador, parcela_atual, descricao, link_drive
                 ])
 
             df = pd.concat([df, pd.DataFrame(novas_linhas, columns=colunas_corretas)], ignore_index=True)
