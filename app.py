@@ -191,6 +191,9 @@ elif menu == "Visualizar Compras":
     rows = worksheet.get_all_records()
     df = pd.DataFrame(rows)
 
+    df["Valor"] = pd.to_numeric(df["Valor"], errors="coerce")
+    df["Valor Parcela"] = pd.to_numeric(df["Valor Parcela"], errors="coerce")
+
     col1, col2, col3 = st.columns(3)
     with col1:
         filtro_cartao = st.selectbox("Filtrar por Cartão:", options=["Todos"] + sorted(df["Cartão"].dropna().unique().tolist()))
@@ -208,8 +211,9 @@ elif menu == "Visualizar Compras":
         df = df[df["Cartão"].isin(cartoes_empresa)]
 
     df_exibicao = df.copy()
-    df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-    df_exibicao["Valor"] = df_exibicao["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+    df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else "")
+    df_exibicao["Valor"] = df_exibicao["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else "")
+
     st.dataframe(df_exibicao, use_container_width=True)
 
     st.markdown("---")
