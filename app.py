@@ -186,21 +186,27 @@ if menu == "Inserir Compra":
 # ================================
 # 8. Página: Visualização de Compras
 # ================================
-# ================================
-# 8. Página: Visualização de Compras
-# ================================
+
 elif menu == "Visualizar Compras":
     st.subheader("📊 Visualização de Compras Registradas")
 
-    # Carregar dados da planilha
-    rows = worksheet.get_all_records()
-    df = pd.DataFrame(rows)
+    # Leitura bruta da planilha
+    rows = worksheet.get_all_values()
+    headers = rows[0]
+    dados = rows[1:]
+    df = pd.DataFrame(dados, columns=headers)
 
-    # Converter para numérico para evitar erros
-    df["Valor"] = pd.to_numeric(df["Valor"], errors="coerce")
-    df["Valor Parcela"] = pd.to_numeric(df["Valor Parcela"], errors="coerce")
+    # Conversão segura de "Valor" e "Valor Parcela"
+    def parse_valor(valor_str):
+        try:
+            return float(valor_str.replace("R$", "").replace(".", "").replace(",", "."))
+        except:
+            return None
 
-    # Filtros de visualização
+    df["Valor"] = df["Valor"].apply(parse_valor)
+    df["Valor Parcela"] = df["Valor Parcela"].apply(parse_valor)
+
+    # Filtros
     col1, col2, col3 = st.columns(3)
     with col1:
         filtro_cartao = st.selectbox("Filtrar por Cartão:", options=["Todos"] + sorted(df["Cartão"].dropna().unique().tolist()))
@@ -209,7 +215,6 @@ elif menu == "Visualizar Compras":
     with col3:
         filtro_empresa = st.selectbox("Filtrar por Empresa:", options=["Todos", "Moon Ventures", "Minimal Club", "Hoomy"])
 
-    # Aplicar filtros
     if filtro_cartao != "Todos":
         df = df[df["Cartão"] == filtro_cartao]
     if filtro_comprador != "Todos":
@@ -218,22 +223,22 @@ elif menu == "Visualizar Compras":
         cartoes_empresa = [k for k, v in mapa_empresas.items() if v == filtro_empresa]
         df = df[df["Cartão"].isin(cartoes_empresa)]
 
-    # Tabela com valores formatados
+    # Formatação visual idêntica à planilha
     df_exibicao = df.copy()
-    df_exibicao["Valor"] = df_exibicao["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else "")
-    df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else "")
+    df_exibicao["Valor"] = df_exibicao["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
+    df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
 
     st.dataframe(df_exibicao, use_container_width=True)
 
-    # Gráfico de barras com valores reais
+    # Gráfico com valores reais
     st.markdown("---")
     st.markdown("### 💳 Gastos por Cartão")
     if not df.empty:
         df_grafico = df.drop_duplicates(subset=["Data", "Cartão", "Fornecedor", "Valor", "Comprador"])
         grafico = df_grafico.groupby("Cartão")["Valor"].sum().reset_index()
         grafico["Total Formatado"] = grafico["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-
-        st.dataframe(grafico.rename(columns={"Total Formatado": "Total por Cartão (R$)"}), use_container_width=True)
+        
+        st.dataframe(grafico[["Cartão", "Total Formatado"]], use_container_width=True)
         st.bar_chart(data=grafico, x="Cartão", y="Valor")
     else:
         st.info("Nenhum dado para exibir o gráfico.")
