@@ -5,24 +5,26 @@ from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# Conectar com o Google Sheets (usando secrets da Streamlit)
+# Autenticação com Google Sheets via secrets
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 credentials_dict = st.secrets["google_service_account"]
 credentials = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
 gc = gspread.authorize(credentials)
 
+# Planilha no Google Sheets
 SHEET_ID = "1CcrV5Gs3LwrLXgjLBgk2M02SAnDVJGuHhqY_pi56Mnw"
 worksheet = gc.open_by_key(SHEET_ID).sheet1
 
-# Caminhos
-data_file = "data/compras.xlsx"
-base_comprovante_path = r"G:\Drives compartilhados\Moon Ventures - Admin Fin\Comprovantes"
+# Caminhos de rede
+comprovante_base = r"G:\Drives compartilhados\Moon Ventures - Admin Fin\Comprovantes"
 
-# Verifica se pasta da rede existe
-if not os.path.exists(base_comprovante_path):
+# Verifica se a pasta principal existe
+if not os.path.exists(comprovante_base):
     st.error("❌ Pasta de comprovantes não encontrada. Verifique se o disco G: está conectado.")
     st.stop()
 
+# Caminho da planilha local
+data_file = "data/compras.xlsx"
 os.makedirs("data", exist_ok=True)
 
 # Colunas esperadas
@@ -33,7 +35,7 @@ if not os.path.exists(data_file):
     df = pd.DataFrame(columns=colunas_corretas)
     df.to_excel(data_file, index=False)
 
-# Streamlit UI
+# Configuração da interface
 st.set_page_config(page_title="Validador de Compras", layout="centered")
 st.title("🧾 Validador de Compras com Cartão de Crédito")
 st.subheader("Inserção de Dados da Compra")
@@ -71,10 +73,14 @@ comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "p
 # Botão de salvar
 if st.button("✅ Salvar Compra"):
     if fornecedor and valor > 0 and comprador and cartão:
-        # Define empresa
+        # Determina a subpasta da empresa
         empresa = mapa_empresas.get(cartão, "Outros")
-        pasta_empresa = os.path.join(base_comprovante_path, empresa)
-        os.makedirs(pasta_empresa, exist_ok=True)
+        pasta_empresa = os.path.join(comprovante_base, empresa)
+
+        # Verifica se a subpasta existe
+        if not os.path.exists(pasta_empresa):
+            st.error(f"❌ A subpasta '{empresa}' não foi encontrada em: {pasta_empresa}")
+            st.stop()
 
         # Salvar comprovante
         comprovante_path = ""
@@ -82,12 +88,17 @@ if st.button("✅ Salvar Compra"):
         if comprovante:
             filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{comprovante.name}"
             comprovante_path = os.path.join(pasta_empresa, filename)
-            with open(comprovante_path, "wb") as f:
-                f.write(comprovante.read())
+
+            try:
+                with open(comprovante_path, "wb") as f:
+                    f.write(comprovante.read())
+                st.success(f"📁 Comprovante salvo em: {comprovante_path}")
+            except Exception as e:
+                st.error(f"❌ Erro ao salvar comprovante: {e}")
+                st.stop()
 
         # Atualizar planilha local
         df = pd.read_excel(data_file)
-
         if list(df.columns) != colunas_corretas:
             df = df.reindex(columns=colunas_corretas)
 
