@@ -151,11 +151,14 @@ if menu == "Inserir Compra":
             st.error("❌ Por favor, preencha todos os campos obrigatórios.")
 
 # ================================
-# 7. Página: Visualização de Compras
+# 7. Página: Visualização de Compras (direto do Google Sheets)
 # ================================
 elif menu == "Visualizar Compras":
     st.subheader("📊 Visualização de Compras Registradas")
-    df = pd.read_excel(data_file)
+
+    # Ler direto do Google Sheets
+    rows = worksheet.get_all_records()
+    df = pd.DataFrame(rows)
 
     # Filtros interativos
     col1, col2 = st.columns(2)
@@ -174,5 +177,8 @@ elif menu == "Visualizar Compras":
     # Gráfico de gastos por cartão
     st.markdown("---")
     st.markdown("### 💳 Gastos por Cartão")
-    grafico = df.groupby("Cartão")["Valor"].sum().reset_index()
-    st.bar_chart(data=grafico, x="Cartão", y="Valor")
+    if not df.empty:
+        grafico = df.groupby("Cartão")["Valor"].sum().reset_index()
+        st.bar_chart(data=grafico, x="Cartão", y="Valor")
+    else:
+        st.info("Nenhum dado para exibir o gráfico.")
