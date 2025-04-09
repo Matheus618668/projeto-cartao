@@ -7,6 +7,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 import tempfile
+import plotly.express as px
 
 # ================================
 # 1. Autenticação Google Sheets e Drive
@@ -210,9 +211,15 @@ elif menu == "Visualizar Compras":
         cartoes_empresa = [k for k, v in mapa_empresas.items() if v == filtro_empresa]
         df = df[df["Cartão"].isin(cartoes_empresa)]
 
+    def formatar_valor(valor):
+        try:
+            return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        except:
+            return ""
+
     df_exibicao = df.copy()
-    df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else "")
-    df_exibicao["Valor"] = df_exibicao["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else "")
+    df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(formatar_valor)
+    df_exibicao["Valor"] = df_exibicao["Valor"].apply(formatar_valor)
 
     st.dataframe(df_exibicao, use_container_width=True)
 
@@ -221,6 +228,15 @@ elif menu == "Visualizar Compras":
     if not df.empty:
         grafico = df.drop_duplicates(subset=["Data", "Cartão", "Fornecedor", "Valor", "Comprador"])
         grafico = grafico.groupby("Cartão")["Valor"].sum().reset_index()
-        st.bar_chart(data=grafico, x="Cartão", y="Valor")
+        fig = px.bar(
+            grafico,
+            x="Cartão",
+            y="Valor",
+            text_auto='.2s',
+            labels={"Valor": "Valor Total (R$)"}
+        )
+        fig.update_traces(texttemplate='R$ %{y:,.2f}', textposition='outside')
+        fig.update_layout(yaxis_tickformat="R$,.2f")
+        st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("Nenhum dado para exibir o gráfico.")
