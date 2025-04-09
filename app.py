@@ -119,7 +119,7 @@ if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
 
     data = datetime.today().strftime('%Y-%m-%d')
-    cartão = st.selectbox("💳 Nome do cartão", cartoes)
+    cartao = st.selectbox("💳 Nome do cartão", cartoes)
     fornecedor = st.text_input("📦 Nome do Fornecedor")
 
     valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80")
@@ -150,7 +150,7 @@ if menu == "Inserir Compra":
             erros.append("Valor deve ser maior que zero.")
         if not comprador:
             erros.append("Nome do comprador não informado.")
-        if not cartão:
+        if not cartao:
             erros.append("Cartão não selecionado.")
         if not descricao:
             erros.append("Descrição da compra não informada.")
@@ -160,7 +160,7 @@ if menu == "Inserir Compra":
         if erros:
             st.error("\n".join(["❌ " + erro for erro in erros]))
         else:
-            empresa = mapa_empresas.get(cartão, "Outros")
+            empresa = mapa_empresas.get(cartao, "Outros")
             link_drive = upload_to_drive(comprovante, empresa)
 
             df = pd.read_excel(data_file)
@@ -171,7 +171,7 @@ if menu == "Inserir Compra":
             for i in range(parcelas):
                 parcela_atual = f"{i+1}/{parcelas}" if parcelas > 1 else "1/1"
                 novas_linhas.append([
-                    data, cartão, fornecedor, valor, parcelado, parcelas, valor_parcela, comprador, parcela_atual, descricao, link_drive
+                    data, cartao, fornecedor, valor, parcelado, parcelas, valor_parcela, comprador, parcela_atual, descricao, link_drive
                 ])
 
             df = pd.concat([df, pd.DataFrame(novas_linhas, columns=colunas_corretas)], ignore_index=True)
