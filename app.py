@@ -41,7 +41,30 @@ PASTAS_EMPRESA = {
 }
 
 # ================================
-# 4. Função para upload no Google Drive
+# 4. Mapeamento fixo dos cartões e empresas
+# ================================
+cartoes = [
+    "Inter Moon Ventures",
+    "Inter Minimal",
+    "Inter Hoomy",
+    "Bradesco Minimal",
+    "Conta Simples Hoomy",
+    "Conta Simples Moon Ventures"
+]
+
+mapa_empresas = {
+    "Inter Moon Ventures": "Moon Ventures",
+    "Bradesco Moon Ventures": "Moon Ventures",
+    "Conta Simples Moon Ventures": "Moon Ventures",
+    "Inter Minimal": "Minimal Club",
+    "Bradesco Minimal": "Minimal Club",
+    "Inter Hoomy": "Hoomy",
+    "Bradesco Hoomy": "Hoomy",
+    "Conta Simples Hoomy": "Hoomy"
+}
+
+# ================================
+# 5. Função para upload no Google Drive
 # ================================
 def upload_to_drive(file, empresa):
     folder_id = PASTAS_EMPRESA.get(empresa)
@@ -74,7 +97,7 @@ def upload_to_drive(file, empresa):
         st.stop()
 
 # ================================
-# 5. Configurações do app
+# 6. Configurações do app
 # ================================
 data_file = "data/compras.xlsx"
 os.makedirs("data", exist_ok=True)
@@ -90,29 +113,10 @@ st.title("🧾 Validador de Compras com Cartão de Crédito")
 menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar Compras"])
 
 # ================================
-# 6. Página: Inserção de Dados
+# 7. Página: Inserção de Dados
 # ================================
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
-
-    cartoes = [
-        "Inter Moon Ventures",
-        "Inter Minimal",
-        "Inter Hoomy",
-        "Bradesco Minimal",
-        "Conta Simples Hoomy",
-        "Conta Simples Moon Ventures"
-    ]
-    mapa_empresas = {
-        "Inter Moon Ventures": "Moon Ventures",
-        "Bradesco Moon Ventures": "Moon Ventures",
-        "Inter Minimal": "Minimal Club",
-        "Bradesco Minimal": "Minimal Club",
-        "Inter Hoomy": "Hoomy",
-        "Bradesco Hoomy": "Hoomy",
-        "Conta Simples Hoomy": "Hoomy",
-        "Conta Simples Moon Ventures": "Moon Ventures"
-    }
 
     # Entradas
     data = datetime.today().strftime('%Y-%m-%d')
@@ -169,7 +173,7 @@ if menu == "Inserir Compra":
             st.success("✅ Compra registrada com sucesso!")
 
 # ================================
-# 7. Página: Visualização de Compras (direto do Google Sheets)
+# 8. Página: Visualização de Compras (direto do Google Sheets)
 # ================================
 elif menu == "Visualizar Compras":
     st.subheader("📊 Visualização de Compras Registradas")
