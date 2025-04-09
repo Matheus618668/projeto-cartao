@@ -78,7 +78,7 @@ def upload_to_drive(file, empresa):
 # ================================
 data_file = "data/compras.xlsx"
 os.makedirs("data", exist_ok=True)
-colunas_corretas = ["Data", "Cartão", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Comprador", "Descrição da Compra", "Comprovante"]
+colunas_corretas = ["Data", "Cartão", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Descrição", "Comprovante"]
 
 if not os.path.exists(data_file):
     df = pd.DataFrame(columns=colunas_corretas)
@@ -118,9 +118,11 @@ if menu == "Inserir Compra":
     data = datetime.today().strftime('%Y-%m-%d')
     cartão = st.selectbox("💳 Nome do cartão", cartoes)
     fornecedor = st.text_input("📦 Nome do Fornecedor")
-    valor = st.number_input("💰 Valor da Compra", min_value=0.0, format="%.2f")
+    valor = st.number_input("💰 Valor da Compra (total)", min_value=0.0, format="%.2f")
     parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"])
     parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=1) if parcelado == "Sim" else 1
+    valor_parcela = valor / parcelas if parcelas > 0 else 0.0
+    st.markdown(f"💵 **Valor de cada parcela:** R$ {valor_parcela:.2f}")
     comprador = st.text_input("👤 Nome do Comprador")
     descricao = st.text_area("📝 Descrição da Compra")
     comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
@@ -151,14 +153,16 @@ if menu == "Inserir Compra":
             if list(df.columns) != colunas_corretas:
                 df = df.reindex(columns=colunas_corretas)
 
-            nova_linha = pd.DataFrame(
-                [[data, cartão, fornecedor, valor, parcelado, parcelas, comprador, descricao, link_drive]],
-                columns=colunas_corretas
-            )
-            df = pd.concat([df, nova_linha], ignore_index=True)
+            novas_linhas = []
+            for i in range(parcelas):
+                novas_linhas.append([
+                    data, cartão, fornecedor, valor, parcelado, parcelas, valor_parcela, comprador, descricao, link_drive
+                ])
+            df = pd.concat([df, pd.DataFrame(novas_linhas, columns=colunas_corretas)], ignore_index=True)
             df.to_excel(data_file, index=False)
 
-            worksheet.append_row([data, cartão, fornecedor, valor, parcelado, parcelas, comprador, descricao, link_drive])
+            for _ in range(parcelas):
+                worksheet.append_row([data, cartão, fornecedor, valor, parcelado, parcelas, valor_parcela, comprador, descricao, link_drive])
 
             st.success("✅ Compra registrada com sucesso!")
 
@@ -187,7 +191,7 @@ elif menu == "Visualizar Compras":
     st.markdown("---")
     st.markdown("### 💳 Gastos por Cartão")
     if not df.empty:
-        grafico = df.groupby("Cartão")["Valor"].sum().reset_index()
-        st.bar_chart(data=grafico, x="Cartão", y="Valor")
+        grafico = df.groupby("Cartão")["Valor Parcela"].sum().reset_index()
+        st.bar_chart(data=grafico, x="Cartão", y="Valor Parcela")
     else:
         st.info("Nenhum dado para exibir o gráfico.")
