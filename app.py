@@ -118,20 +118,20 @@ menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar C
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
 
-    # Entradas
     data = datetime.today().strftime('%Y-%m-%d')
     cartão = st.selectbox("💳 Nome do cartão", cartoes)
     fornecedor = st.text_input("📦 Nome do Fornecedor")
     valor = st.number_input("💰 Valor da Compra (total)", min_value=0.0, format="%.2f")
+    if valor > 1000:
+        valor = valor / 10  # Corrige valor digitado errado tipo 3998 -> 399,80
     parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"])
     parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=1) if parcelado == "Sim" else 1
     valor_parcela = valor / parcelas if parcelas > 0 else 0.0
-    st.markdown(f"💵 **Valor de cada parcela:** R$ {valor_parcela:.2f}")
+    st.markdown(f"💵 **Valor de cada parcela:** R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
     comprador = st.text_input("👤 Nome do Comprador")
     descricao = st.text_area("📝 Descrição da Compra")
     comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
 
-    # Botão de salvar
     if st.button("✅ Salvar Compra"):
         erros = []
         if not fornecedor:
@@ -173,7 +173,7 @@ if menu == "Inserir Compra":
             st.success("✅ Compra registrada com sucesso!")
 
 # ================================
-# 8. Página: Visualização de Compras (direto do Google Sheets)
+# 8. Página: Visualização de Compras
 # ================================
 elif menu == "Visualizar Compras":
     st.subheader("📊 Visualização de Compras Registradas")
@@ -197,12 +197,16 @@ elif menu == "Visualizar Compras":
         cartoes_empresa = [k for k, v in mapa_empresas.items() if v == filtro_empresa]
         df = df[df["Cartão"].isin(cartoes_empresa)]
 
-    st.dataframe(df, use_container_width=True)
+    df_exibicao = df.copy()
+    df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+    df_exibicao["Valor"] = df_exibicao["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+    st.dataframe(df_exibicao, use_container_width=True)
 
     st.markdown("---")
     st.markdown("### 💳 Gastos por Cartão")
     if not df.empty:
-        grafico = df.groupby("Cartão")["Valor Parcela"].sum().reset_index()
-        st.bar_chart(data=grafico, x="Cartão", y="Valor Parcela")
+        grafico = df.drop_duplicates(subset=["Data", "Cartão", "Fornecedor", "Valor", "Comprador"])
+        grafico = grafico.groupby("Cartão")["Valor"].sum().reset_index()
+        st.bar_chart(data=grafico, x="Cartão", y="Valor")
     else:
         st.info("Nenhum dado para exibir o gráfico.")
