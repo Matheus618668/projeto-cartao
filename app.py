@@ -228,12 +228,13 @@ if menu == "Inserir Compra":
 # ================================
 # Botão de Nova Compra (Reset)
 # ================================
-if menu == "Inserir Compra":
     if st.session_state.get("form_submitted", False):
         st.markdown("---")
         if st.button("🆕 Nova Compra"):
-            st.session_state.clear()  # Limpa todos os campos
-            st.experimental_rerun()   # Recarrega a página
+            for key in list(st.session_state.keys()):
+                if key not in ["google_service_account", "email"]:
+                    del st.session_state[key]
+            st.experimental_rerun()
 
 
 # ================================
