@@ -247,7 +247,7 @@ if menu == "Inserir Compra":
             st.session_state["compra_salva"] = True
 
     if st.session_state.get("compra_salva", False):
-    st.markdown("---")
+        st.markdown("---")
     if st.button("🆕 Nova Compra"):
         for chave in list(st.session_state.keys()):
             if chave not in ["google_service_account", "email"]:
