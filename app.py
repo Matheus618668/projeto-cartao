@@ -1,4 +1,9 @@
 import streamlit as st
+
+# ✅ CONFIGURAÇÃO DA PÁGINA — PRIMEIRO COMANDO DO STREAMLIT
+st.set_page_config(page_title="Validador de Compras", layout="centered")
+
+# Agora sim pode seguir o resto
 import pandas as pd
 import os
 from datetime import datetime
@@ -11,11 +16,6 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-# ================================
-# 0. Configuração da Página (primeiro comando do Streamlit!)
-# ================================
-
-st.set_page_config(page_title="Validador de Compras", layout="centered")
 
 # ================================
 # 1. Autenticação Google Sheets e Drive
