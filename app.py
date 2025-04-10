@@ -12,6 +12,12 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 # ================================
+# 0. Configuração da Página (primeiro comando do Streamlit!)
+# ================================
+
+st.set_page_config(page_title="Validador de Compras", layout="centered")
+
+# ================================
 # 1. Autenticação Google Sheets e Drive
 # ================================
 scope = [
@@ -141,7 +147,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.set_page_config(page_title="Validador de Compras", layout="centered")
+
 
 # Reset automático ao abrir com ?new=1
 if "new" in st.query_params:
