@@ -251,8 +251,8 @@ if menu == "Inserir Compra":
     if st.session_state.get("compra_salva", False):
         st.markdown("---")
     if st.button("🆕 Nova Compra"):
-    st.query_params["new"] = "1"
-    st.rerun()
+        st.query_params["new"] = "1"
+         st.rerun()
 
 
 # ================================
