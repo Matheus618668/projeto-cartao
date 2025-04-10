@@ -248,7 +248,7 @@ if menu == "Inserir Compra":
             for campo in list(st.session_state.keys()):
                 if campo not in ["google_service_account", "email"]:
                     del st.session_state[campo]
-            st.experimental_rerun()
+            st.rerun()
 
 
 # ================================
