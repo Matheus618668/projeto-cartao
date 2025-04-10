@@ -141,12 +141,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Se a URL tiver o parâmetro ?new=1, força a limpeza de estado
-if "new" in st.experimental_get_query_params():
+st.set_page_config(page_title="Validador de Compras", layout="centered")
+
+# Se a URL tiver o parâmetro ?new=1, limpa o estado
+if "new" in st.query_params:
     for chave in list(st.session_state.keys()):
         if chave not in ["google_service_account", "email"]:
             del st.session_state[chave]
-    st.experimental_set_query_params()  # limpa os parâmetros da URL
+    st.query_params.clear()
 
 st.title("🧾 Validador de Compras com Cartão de Crédito")
 menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar Compras"])
@@ -249,11 +251,8 @@ if menu == "Inserir Compra":
     if st.session_state.get("compra_salva", False):
         st.markdown("---")
     if st.button("🆕 Nova Compra"):
-        for chave in list(st.session_state.keys()):
-            if chave not in ["google_service_account", "email"]:
-                del st.session_state[chave]
-        # Redireciona o usuário recarregando a página com query params
-        st.experimental_set_query_params(new="1")
+    st.query_params["new"] = "1"
+    st.rerun()
 
 
 # ================================
