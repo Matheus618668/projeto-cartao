@@ -248,11 +248,12 @@ if menu == "Inserir Compra":
             st.success("✅ Compra registrada com sucesso!")
             st.session_state["compra_salva"] = True
 
-    if st.session_state.get("compra_salva", False):
-        st.markdown("---")
+# Botão de Nova Compra
+if st.session_state.get("form_submitted", False):
+    st.markdown("---")
     if st.button("🆕 Nova Compra"):
         st.query_params["new"] = "1"
-         st.rerun()
+        st.rerun()
 
 
 # ================================
