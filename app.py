@@ -108,7 +108,7 @@ if not os.path.exists(data_file):
     df.to_excel(data_file, index=False)
 
 st.set_page_config(page_title="Validador de Compras", layout="centered")
-st.title("📟 Validador de Compras com Cartão de Crédito")
+st.title("🧾 Validador de Compras com Cartão de Crédito")
 
 menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar Compras"])
 
@@ -118,12 +118,8 @@ menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar C
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
 
-    if "submetido" not in st.session_state:
-        st.session_state.submetido = False
-
-    if st.session_state.submetido:
-        st.session_state.submetido = False
-        st.experimental_rerun()
+    if "compra_salva" not in st.session_state:
+        st.session_state.compra_salva = False
 
     data = datetime.today().strftime('%Y-%m-%d')
     cartao = st.selectbox("💳 Nome do cartão", cartoes)
@@ -141,9 +137,10 @@ if menu == "Inserir Compra":
     st.markdown(f"🔎 Valor interpretado: **{valor_formatado}**")
 
     parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"])
-    parcelas = 1
     if parcelado == "Sim":
         parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=1)
+    else:
+        parcelas = 1
 
     valor_parcela = valor / parcelas if parcelas > 0 else 0.0
     st.markdown(f"💵 **Valor de cada parcela:** R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
@@ -152,7 +149,9 @@ if menu == "Inserir Compra":
     descricao = st.text_area("📝 Descrição da Compra")
     comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
 
-    if st.button("✅ Salvar Compra"):
+    salvar = st.button("✅ Salvar Compra")
+
+    if salvar and not st.session_state.compra_salva:
         erros = []
         if not fornecedor:
             erros.append("Fornecedor não informado.")
@@ -190,8 +189,12 @@ if menu == "Inserir Compra":
             for linha in novas_linhas:
                 worksheet.append_row(linha)
 
-            st.session_state.submetido = True
             st.success("✅ Compra registrada com sucesso!")
+            st.session_state.compra_salva = True
+            st.experimental_rerun()
+
+    if st.session_state.compra_salva:
+        st.session_state.compra_salva = False
 
 # ================================
 # 8. Página: Visualização de Compras
@@ -222,8 +225,8 @@ elif menu == "Visualizar Compras":
         df = df[df["Cartão"].isin(cartoes_empresa)]
 
     df_exibicao = df.copy()
-    df_exibicao["Valor"] = df_exibicao["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else "")
     df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else "")
+    df_exibicao["Valor"] = df_exibicao["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else "")
 
     st.dataframe(df_exibicao, use_container_width=True)
 
