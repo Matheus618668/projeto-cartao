@@ -43,6 +43,9 @@ PASTAS_EMPRESA = {
     "Hoomy": "1wBwFFxuEYBnuPyMY13cH0zKEMqZtHDd9"
 }
 
+# ================================
+# 4. Mapeamento fixo dos cartões e empresas
+# ================================
 cartoes = [
     "Inter Moon Ventures",
     "Inter Minimal",
@@ -64,7 +67,7 @@ mapa_empresas = {
 }
 
 # ================================
-# Upload no Drive
+# 5. Função para upload no Google Drive
 # ================================
 def upload_to_drive(file, empresa):
     folder_id = PASTAS_EMPRESA.get(empresa)
@@ -83,14 +86,21 @@ def upload_to_drive(file, empresa):
         gfile.SetContentFile(tmp_path)
         gfile.Upload()
         os.remove(tmp_path)
-        gfile.InsertPermission({'type': 'anyone', 'value': 'anyone', 'role': 'reader'})
+
+        gfile.InsertPermission({
+            'type': 'anyone',
+            'value': 'anyone',
+            'role': 'reader'
+        })
+
         return gfile['alternateLink']
+
     except Exception as e:
         st.error(f"❌ Erro ao fazer upload para o Drive: {e}")
         st.stop()
 
 # ================================
-# Envio de Email
+# 6. Envio de Email
 # ================================
 def enviar_email(destinatario, dados):
     config = st.secrets["email"]
@@ -112,7 +122,7 @@ def enviar_email(destinatario, dados):
         st.warning(f"Email não enviado: {e}")
 
 # ================================
-# App Config
+# 7. App Principal
 # ================================
 data_file = "data/compras.xlsx"
 os.makedirs("data", exist_ok=True)
@@ -134,24 +144,24 @@ st.title("🧾 Validador de Compras com Cartão de Crédito")
 menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar Compras"])
 
 # ================================
-# Inicializar campos no session_state
-# ================================
-for field in ["cartao", "fornecedor", "valor_str", "parcelado", "parcelas", "comprador", "descricao", "email_opcional"]:
-    if field not in st.session_state:
-        st.session_state[field] = "" if field != "parcelas" else 1
-
-# ================================
-# Inserir Compra
+# Inserção de Dados
 # ================================
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
 
+    if "form_submitted" not in st.session_state:
+        st.session_state.form_submitted = False
+
+    if st.session_state.form_submitted:
+        st.session_state.form_submitted = False
+        st.rerun()
+
     col_margem, col_conteudo, col_fim = st.columns([1, 4, 1])
     with col_conteudo:
         data = datetime.today().strftime('%Y-%m-%d')
-        cartao = st.selectbox("💳 Nome do cartão", cartoes, index=cartoes.index(st.session_state["cartao"]) if st.session_state["cartao"] in cartoes else 0, key="cartao")
-        fornecedor = st.text_input("📦 Nome do Fornecedor", value=st.session_state["fornecedor"], key="fornecedor")
-        valor_str = st.text_input("💰 Valor da Compra (total)", value=st.session_state["valor_str"], placeholder="Ex: 399,80", key="valor_str")
+        cartao = st.selectbox("💳 Nome do cartão", cartoes)
+        fornecedor = st.text_input("📦 Nome do Fornecedor")
+        valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80")
 
         try:
             valor_float = float(valor_str.replace("R$", "").replace(".", "").replace(",", "."))
@@ -161,18 +171,14 @@ if menu == "Inserir Compra":
         valor_formatado = f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         st.markdown(f"🔎 Valor interpretado: **{valor_formatado}**")
 
-        parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"], index=1 if st.session_state["parcelado"] == "Sim" else 0, key="parcelado")
-        if parcelado == "Sim":
-            parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=int(st.session_state["parcelas"]), key="parcelas")
-        else:
-            parcelas = 1
-
+        parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"])
+        parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=1) if parcelado == "Sim" else 1
         valor_parcela = valor / parcelas if parcelas > 0 else 0.0
         st.markdown(f"💵 **Valor de cada parcela:** R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
-        comprador = st.text_input("👤 Nome do Comprador", value=st.session_state["comprador"], key="comprador")
-        email_opcional = st.text_input("📧 E-mail (opcional)", value=st.session_state["email_opcional"], key="email_opcional")
-        descricao = st.text_area("📝 Descrição da Compra", value=st.session_state["descricao"], key="descricao")
+        comprador = st.text_input("👤 Nome do Comprador")
+        email_opcional = st.text_input("📧 E-mail (opcional)")
+        descricao = st.text_area("📝 Descrição da Compra")
         comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
 
         if st.button("✅ Salvar Compra"):
@@ -223,16 +229,22 @@ if menu == "Inserir Compra":
                 st.success("✅ Compra registrada com sucesso!")
                 st.session_state.form_submitted = True
 
-    if st.session_state.get("form_submitted"):
-        st.markdown("---")
-        if st.button("🆕 Nova Compra"):
-            for field in ["cartao", "fornecedor", "valor_str", "parcelado", "parcelas", "comprador", "descricao", "email_opcional"]:
-                st.session_state[field] = "" if field != "parcelas" else 1
-            st.session_state["form_submitted"] = False
-            st.experimental_rerun()
+# ================================
+# Botão de Nova Compra (Reset)
+# ================================
+if st.session_state.get("form_submitted", False):
+    st.markdown("---")
+    if st.button("🆕 Nova Compra"):
+        # Limpa todos os campos exceto configurações sensíveis
+        for key in list(st.session_state.keys()):
+            if key not in ["google_service_account", "email", "form_submitted"]:
+                del st.session_state[key]
+        st.session_state["form_submitted"] = False
+        st.experimental_rerun()
+
 
 # ================================
-# Visualizar Compras (mantido igual)
+# Visualização
 # ================================
 elif menu == "Visualizar Compras":
     st.subheader("📊 Visualização de Compras Registradas")
@@ -271,12 +283,14 @@ elif menu == "Visualizar Compras":
     df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
 
     st.dataframe(df_exibicao, use_container_width=True)
+
     st.markdown("---")
     st.markdown("### 💳 Gastos por Cartão")
     if not df.empty:
         df_grafico = df.drop_duplicates(subset=["Data", "Cartão", "Fornecedor", "Valor", "Comprador"])
         grafico = df_grafico.groupby("Cartão")["Valor"].sum().reset_index()
         grafico["Total Formatado"] = grafico["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+
         st.dataframe(grafico[["Cartão", "Total Formatado"]], use_container_width=True)
         st.bar_chart(data=grafico, x="Cartão", y="Valor")
     else:
