@@ -229,13 +229,18 @@ if menu == "Inserir Compra":
                 st.success("✅ Compra registrada com sucesso!")
                 st.session_state.form_submitted = True
 
-    if st.session_state.get("form_submitted"):
-       if st.button("🆕 Nova Compra"):
-           for key in list(st.session_state.keys()):
-               if key not in ("google_service_account", "email"):  # Protege as configs
-                   del st.session_state[key]
-           st.experimental_rerun()  # Usa o nome antigo por compatibilidade
-
+# ================================
+# Botão de Nova Compra (Reset)
+# ================================
+if st.session_state.get("form_submitted", False):
+    st.markdown("---")
+    if st.button("🆕 Nova Compra"):
+        # Limpa todos os campos exceto configurações sensíveis
+        for key in list(st.session_state.keys()):
+            if key not in ["google_service_account", "email", "form_submitted"]:
+                del st.session_state[key]
+        st.session_state["form_submitted"] = False
+        st.experimental_rerun()
 
 
 # ================================
