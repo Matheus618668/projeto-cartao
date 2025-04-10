@@ -9,6 +9,7 @@ from pydrive.drive import GoogleDrive
 import tempfile
 import smtplib
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # ================================
 # 1. Autenticação Google Sheets e Drive
@@ -99,155 +100,143 @@ def upload_to_drive(file, empresa):
         st.stop()
 
 # ================================
-# 6. Função para envio de e-mail
+# 6. Envio de Email
 # ================================
 def enviar_email(destinatario, dados):
-    email_conf = st.secrets["email"]
-    corpo = f"""
-    Compra registrada com sucesso:
+    config = st.secrets["email"]
 
-    Data: {dados['data']}
-    Cartão: {dados['cartao']}
-    Fornecedor: {dados['fornecedor']}
-    Valor Total: R$ {dados['valor']:,.2f}
-    Parcelado: {dados['parcelado']}
-    Parcelas: {dados['parcelas']}
-    Valor Parcela: R$ {dados['valor_parcela']:,.2f}
-    Comprador: {dados['comprador']}
-    Descrição: {dados['descricao']}
-    Link Comprovante: {dados['link']}
-    """
-    msg = MIMEText(corpo, "plain", "utf-8")
-    msg["Subject"] = "Nova Compra Registrada"
-    msg["From"] = email_conf["sender"]
-    msg["To"] = destinatario
+    msg = MIMEMultipart()
+    msg['From'] = config["sender"]
+    msg['To'] = destinatario
+    msg['Subject'] = "Confirmação de Registro de Compra"
+
+    corpo = "".join([f"<b>{chave}:</b> {valor}<br>" for chave, valor in dados.items()])
+    msg.attach(MIMEText(corpo, 'html'))
 
     try:
-        server = smtplib.SMTP(email_conf["smtp_server"], email_conf["smtp_port"])
-        server.starttls()
-        server.login(email_conf["sender"], email_conf["password"])
-        server.send_message(msg)
-        server.quit()
+        with smtplib.SMTP(config["smtp_server"], config["smtp_port"]) as server:
+            server.starttls()
+            server.login(config["sender"], config["password"])
+            server.sendmail(config["sender"], destinatario, msg.as_string())
     except Exception as e:
-        st.warning(f"📧 Não foi possível enviar e-mail: {e}")
+        st.warning(f"Email não enviado: {e}")
 
 # ================================
-# 7. Configurações do app
+# 7. App Principal
 # ================================
 data_file = "data/compras.xlsx"
 os.makedirs("data", exist_ok=True)
 colunas_corretas = ["Data", "Cartão", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante"]
-
 if not os.path.exists(data_file):
-    df = pd.DataFrame(columns=colunas_corretas)
-    df.to_excel(data_file, index=False)
+    pd.DataFrame(columns=colunas_corretas).to_excel(data_file, index=False)
 
 st.set_page_config(page_title="Validador de Compras", layout="centered")
-st.title("🧾 Validador de Compras com Cartão de Crédito")
+st.markdown("""
+<style>
+    .main {
+        padding-left: 40px;
+        padding-right: 40px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
+st.title("🧾 Validador de Compras com Cartão de Crédito")
 menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar Compras"])
 
 # ================================
-# 8. Página: Inserção de Dados
+# Inserção de Dados
 # ================================
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
 
-    data = datetime.today().strftime('%Y-%m-%d')
-    cartao = st.selectbox("💳 Nome do cartão", cartoes)
-    fornecedor = st.text_input("📦 Nome do Fornecedor")
+    if "form_submitted" not in st.session_state:
+        st.session_state.form_submitted = False
 
-    valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80")
-    try:
-        valor_float = float(valor_str.replace("R$", "").replace(".", "").replace(",", "."))
-        valor_formatado = f"R$ {valor_float:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except:
-        valor_float = 0.0
-        valor_formatado = "R$ 0,00"
-
-    valor = valor_float
-    st.markdown(f"🔎 Valor interpretado: **{valor_formatado}**")
-
-    parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"])
-    parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=1) if parcelado == "Sim" else 1
-    valor_parcela = valor / parcelas if parcelas > 0 else 0.0
-    st.markdown(f"💵 **Valor de cada parcela:** R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-
-    comprador = st.text_input("👤 Nome do Comprador")
-    descricao = st.text_area("📝 Descrição da Compra")
-    email_destino = st.text_input("📧 E-mail para envio dos dados (opcional)")
-    comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
-
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        salvar = st.button("✅ Salvar Compra")
-    with col2:
-        limpar = st.button("🆕 Nova Compra")
-
-    if salvar:
-        erros = []
-        if not fornecedor:
-            erros.append("Fornecedor não informado.")
-        if valor <= 0:
-            erros.append("Valor deve ser maior que zero.")
-        if not comprador:
-            erros.append("Nome do comprador não informado.")
-        if not cartao:
-            erros.append("Cartão não selecionado.")
-        if not descricao:
-            erros.append("Descrição da compra não informada.")
-        if not comprovante:
-            erros.append("Comprovante não anexado.")
-
-        if erros:
-            st.error("\n".join(["❌ " + erro for erro in erros]))
-        else:
-            empresa = mapa_empresas.get(cartao, "Outros")
-            link_drive = upload_to_drive(comprovante, empresa)
-
-            df = pd.read_excel(data_file)
-            if list(df.columns) != colunas_corretas:
-                df = df.reindex(columns=colunas_corretas)
-
-            novas_linhas = []
-            for i in range(parcelas):
-                parcela_atual = f"{i+1}/{parcelas}" if parcelas > 1 else "1/1"
-                novas_linhas.append([
-                    data, cartao, fornecedor, valor, parcelado, parcelas, valor_parcela, comprador, parcela_atual, descricao, link_drive
-                ])
-
-            df = pd.concat([df, pd.DataFrame(novas_linhas, columns=colunas_corretas)], ignore_index=True)
-            df.to_excel(data_file, index=False)
-
-            for linha in novas_linhas:
-                worksheet.append_row(linha)
-
-            if email_destino:
-                enviar_email(email_destino, {
-                    "data": data,
-                    "cartao": cartao,
-                    "fornecedor": fornecedor,
-                    "valor": valor,
-                    "parcelado": parcelado,
-                    "parcelas": parcelas,
-                    "valor_parcela": valor_parcela,
-                    "comprador": comprador,
-                    "descricao": descricao,
-                    "link": link_drive
-                })
-
-            st.success("✅ Compra registrada com sucesso!")
-            st.experimental_rerun()
-
-    if limpar:
+    if st.session_state.form_submitted:
+        st.session_state.form_submitted = False
         st.experimental_rerun()
 
+    col_margem, col_conteudo, col_fim = st.columns([1, 4, 1])
+    with col_conteudo:
+        data = datetime.today().strftime('%Y-%m-%d')
+        cartao = st.selectbox("💳 Nome do cartão", cartoes)
+        fornecedor = st.text_input("📦 Nome do Fornecedor")
+        valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80")
+
+        try:
+            valor_float = float(valor_str.replace("R$", "").replace(".", "").replace(",", "."))
+        except:
+            valor_float = 0.0
+        valor = valor_float
+        valor_formatado = f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        st.markdown(f"🔎 Valor interpretado: **{valor_formatado}**")
+
+        parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"])
+        parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=1) if parcelado == "Sim" else 1
+        valor_parcela = valor / parcelas if parcelas > 0 else 0.0
+        st.markdown(f"💵 **Valor de cada parcela:** R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+
+        comprador = st.text_input("👤 Nome do Comprador")
+        email_opcional = st.text_input("📧 E-mail (opcional)")
+        descricao = st.text_area("📝 Descrição da Compra")
+        comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
+
+        if st.button("✅ Salvar Compra"):
+            erros = []
+            if not fornecedor: erros.append("Fornecedor não informado.")
+            if valor <= 0: erros.append("Valor deve ser maior que zero.")
+            if not comprador: erros.append("Nome do comprador não informado.")
+            if not cartao: erros.append("Cartão não selecionado.")
+            if not descricao: erros.append("Descrição da compra não informada.")
+            if not comprovante: erros.append("Comprovante não anexado.")
+
+            if erros:
+                st.error("\n".join(["❌ " + erro for erro in erros]))
+            else:
+                empresa = mapa_empresas.get(cartao, "Outros")
+                link_drive = upload_to_drive(comprovante, empresa)
+
+                df = pd.read_excel(data_file)
+                if list(df.columns) != colunas_corretas:
+                    df = df.reindex(columns=colunas_corretas)
+
+                novas_linhas = []
+                for i in range(parcelas):
+                    parcela_atual = f"{i+1}/{parcelas}" if parcelas > 1 else "1/1"
+                    novas_linhas.append([
+                        data, cartao, fornecedor, valor, parcelado, parcelas, valor_parcela, comprador, parcela_atual, descricao, link_drive
+                    ])
+
+                df = pd.concat([df, pd.DataFrame(novas_linhas, columns=colunas_corretas)], ignore_index=True)
+                df.to_excel(data_file, index=False)
+                for linha in novas_linhas:
+                    worksheet.append_row(linha)
+
+                if email_opcional:
+                    dados_email = {
+                        "Data": data,
+                        "Cartão": cartao,
+                        "Fornecedor": fornecedor,
+                        "Valor Total": valor_formatado,
+                        "Parcelado": parcelado,
+                        "Parcelas": parcelas,
+                        "Valor da Parcela": f"R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                        "Comprador": comprador,
+                        "Descrição": descricao
+                    }
+                    enviar_email(email_opcional, dados_email)
+
+                st.success("✅ Compra registrada com sucesso!")
+                st.session_state.form_submitted = True
+
+        if st.session_state.get("form_submitted"):
+            st.button("🆕 Nova Compra", on_click=lambda: st.experimental_rerun())
+
 # ================================
-# 9. Página: Visualização de Compras
+# Visualização
 # ================================
 elif menu == "Visualizar Compras":
     st.subheader("📊 Visualização de Compras Registradas")
-
     rows = worksheet.get_all_values()
     headers = rows[0]
     dados = rows[1:]
@@ -268,7 +257,7 @@ elif menu == "Visualizar Compras":
     with col2:
         filtro_comprador = st.selectbox("Filtrar por Comprador:", options=["Todos"] + sorted(df["Comprador"].dropna().unique().tolist()))
     with col3:
-        filtro_empresa = st.selectbox("Filtrar por Empresa:", options=["Todos"] + list(PASTAS_EMPRESA.keys()))
+        filtro_empresa = st.selectbox("Filtrar por Empresa:", options=["Todos", "Moon Ventures", "Minimal Club", "Hoomy"])
 
     if filtro_cartao != "Todos":
         df = df[df["Cartão"] == filtro_cartao]
