@@ -230,7 +230,11 @@ if menu == "Inserir Compra":
                 st.session_state.form_submitted = True
 
         if st.session_state.get("form_submitted"):
-            st.button("🆕 Nova Compra", on_click=st.rerun)
+           if st.button("🆕 Nova Compra"):
+        for key in st.session_state.keys():
+            del st.session_state[key]
+        st.rerun()
+
 
 # ================================
 # Visualização
