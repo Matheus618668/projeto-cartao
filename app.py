@@ -255,10 +255,11 @@ if menu == "Inserir Compra":
             st.session_state["compra_salva"] = True
 
 # Botão de Nova Compra
-if st.session_state.get("form_submitted", False):
+if st.session_state.get("compra_salva", False):
     st.markdown("---")
     if st.button("🆕 Nova Compra"):
         st.query_params["new"] = "1"
+        st.session_state["compra_salva"] = False
         st.rerun()
 
 
