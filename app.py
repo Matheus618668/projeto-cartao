@@ -146,94 +146,108 @@ st.markdown("""
 st.title("🧾 Validador de Compras com Cartão de Crédito")
 menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar Compras"])
 
-
-# ================================
-# Inserção de Dados
-# ================================
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
 
-    col_margem, col_conteudo, col_fim = st.columns([1, 4, 1])
-    with col_conteudo:
-        data = datetime.today().strftime('%Y-%m-%d')
-        cartao = st.selectbox("💳 Nome do cartão", cartoes, key="cartao")
-        fornecedor = st.text_input("📦 Nome do Fornecedor", key="fornecedor")
-        valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80", key="valor_str")
+    # Inicializar os campos no session_state
+    campos = {
+        "cartao": "",
+        "fornecedor": "",
+        "valor_str": "",
+        "parcelado": "Não",
+        "parcelas": 1,
+        "comprador": "",
+        "descricao": "",
+        "email_opcional": ""
+    }
 
-        try:
-            valor_float = float(valor_str.replace("R$", "").replace(".", "").replace(",", "."))
-        except:
-            valor_float = 0.0
-        valor = valor_float
-        valor_formatado = f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        st.markdown(f"🔎 Valor interpretado: **{valor_formatado}**")
+    for campo, valor_inicial in campos.items():
+        if campo not in st.session_state:
+            st.session_state[campo] = valor_inicial
 
-        parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"], key="parcelado")
-        parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=1, key="parcelas") if parcelado == "Sim" else 1
-        valor_parcela = valor / parcelas if parcelas > 0 else 0.0
-        st.markdown(f"💵 **Valor de cada parcela:** R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+    # Atualizar valores dos inputs
+    cartao = st.selectbox("💳 Nome do cartão", cartoes, key="cartao")
+    fornecedor = st.text_input("📦 Nome do Fornecedor", key="fornecedor")
+    valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80", key="valor_str")
 
-        comprador = st.text_input("👤 Nome do Comprador", key="comprador")
-        email_opcional = st.text_input("📧 E-mail (opcional)", key="email")
-        descricao = st.text_area("📝 Descrição da Compra", key="descricao")
-        comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"], key="comprovante")
+    try:
+        valor_float = float(valor_str.replace("R$", "").replace(".", "").replace(",", "."))
+    except:
+        valor_float = 0.0
 
-        if st.button("✅ Salvar Compra"):
-            erros = []
-            if not fornecedor: erros.append("Fornecedor não informado.")
-            if valor <= 0: erros.append("Valor deve ser maior que zero.")
-            if not comprador: erros.append("Nome do comprador não informado.")
-            if not cartao: erros.append("Cartão não selecionado.")
-            if not descricao: erros.append("Descrição da compra não informada.")
-            if not comprovante: erros.append("Comprovante não anexado.")
+    valor = valor_float
+    valor_formatado = f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    st.markdown(f"🔎 Valor interpretado: **{valor_formatado}**")
 
-            if erros:
-                st.error("\n".join(["❌ " + erro for erro in erros]))
-            else:
-                empresa = mapa_empresas.get(cartao, "Outros")
-                link_drive = upload_to_drive(comprovante, empresa)
+    parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"], key="parcelado")
+    if parcelado == "Sim":
+        parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=st.session_state["parcelas"], key="parcelas")
+    else:
+        parcelas = 1
 
-                df = pd.read_excel(data_file)
-                if list(df.columns) != colunas_corretas:
-                    df = df.reindex(columns=colunas_corretas)
+    valor_parcela = valor / parcelas if parcelas > 0 else 0.0
+    st.markdown(f"💵 **Valor de cada parcela:** R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
-                novas_linhas = []
-                for i in range(parcelas):
-                    parcela_atual = f"{i+1}/{parcelas}" if parcelas > 1 else "1/1"
-                    novas_linhas.append([
-                        data, cartao, fornecedor, valor, parcelado, parcelas, valor_parcela, comprador, parcela_atual, descricao, link_drive
-                    ])
+    comprador = st.text_input("👤 Nome do Comprador", key="comprador")
+    email_opcional = st.text_input("📧 E-mail (opcional)", key="email_opcional")
+    descricao = st.text_area("📝 Descrição da Compra", key="descricao")
+    comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
 
-                df = pd.concat([df, pd.DataFrame(novas_linhas, columns=colunas_corretas)], ignore_index=True)
-                df.to_excel(data_file, index=False)
-                for linha in novas_linhas:
-                    worksheet.append_row(linha)
+    if st.button("✅ Salvar Compra"):
+        erros = []
+        if not fornecedor: erros.append("Fornecedor não informado.")
+        if valor <= 0: erros.append("Valor deve ser maior que zero.")
+        if not comprador: erros.append("Nome do comprador não informado.")
+        if not cartao: erros.append("Cartão não selecionado.")
+        if not descricao: erros.append("Descrição da compra não informada.")
+        if not comprovante: erros.append("Comprovante não anexado.")
 
-                if email_opcional:
-                    dados_email = {
-                        "Data": data,
-                        "Cartão": cartao,
-                        "Fornecedor": fornecedor,
-                        "Valor Total": valor_formatado,
-                        "Parcelado": parcelado,
-                        "Parcelas": parcelas,
-                        "Valor da Parcela": f"R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
-                        "Comprador": comprador,
-                        "Descrição": descricao
-                    }
-                    enviar_email(email_opcional, dados_email)
+        if erros:
+            st.error("\n".join(["❌ " + erro for erro in erros]))
+        else:
+            empresa = mapa_empresas.get(cartao, "Outros")
+            link_drive = upload_to_drive(comprovante, empresa)
 
-                st.success("✅ Compra registrada com sucesso!")
+            df = pd.read_excel(data_file)
+            if list(df.columns) != colunas_corretas:
+                df = df.reindex(columns=colunas_corretas)
 
-# ================================
-# Botão de Nova Compra (Reset)
-# ================================
-    if st.session_state.get("form_submitted", False):
+            novas_linhas = []
+            for i in range(parcelas):
+                parcela_atual = f"{i+1}/{parcelas}" if parcelas > 1 else "1/1"
+                novas_linhas.append([
+                    datetime.today().strftime('%Y-%m-%d'), cartao, fornecedor, valor, parcelado, parcelas, valor_parcela, comprador, parcela_atual, descricao, link_drive
+                ])
+
+            df = pd.concat([df, pd.DataFrame(novas_linhas, columns=colunas_corretas)], ignore_index=True)
+            df.to_excel(data_file, index=False)
+            for linha in novas_linhas:
+                worksheet.append_row(linha)
+
+            if email_opcional:
+                dados_email = {
+                    "Data": datetime.today().strftime('%Y-%m-%d'),
+                    "Cartão": cartao,
+                    "Fornecedor": fornecedor,
+                    "Valor Total": valor_formatado,
+                    "Parcelado": parcelado,
+                    "Parcelas": parcelas,
+                    "Valor da Parcela": f"R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                    "Comprador": comprador,
+                    "Descrição": descricao
+                }
+                enviar_email(email_opcional, dados_email)
+
+            st.success("✅ Compra registrada com sucesso!")
+            st.session_state["compra_salva"] = True
+
+    # Botão Nova Compra (Reset)
+    if st.session_state.get("compra_salva", False):
         st.markdown("---")
         if st.button("🆕 Nova Compra"):
-            for key in list(st.session_state.keys()):
-                if key not in ["google_service_account", "email"]:
-                    del st.session_state[key]
+            for campo in list(st.session_state.keys()):
+                if campo not in ["google_service_account", "email"]:
+                    del st.session_state[campo]
             st.experimental_rerun()
 
 
