@@ -121,6 +121,9 @@ def enviar_email(destinatario, dados):
     except Exception as e:
         st.warning(f"Email não enviado: {e}")
 
+
+# ... (importações e autenticações permanecem iguais)
+
 # ================================
 # 7. App Principal
 # ================================
@@ -149,19 +152,16 @@ menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar C
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
 
-    if "form_submitted" not in st.session_state:
-        st.session_state.form_submitted = False
-
-    if st.session_state.form_submitted:
-        st.session_state.form_submitted = False
-        st.rerun()
+    if "nova_compra" not in st.session_state:
+        st.session_state.nova_compra = False
 
     col_margem, col_conteudo, col_fim = st.columns([1, 4, 1])
     with col_conteudo:
         data = datetime.today().strftime('%Y-%m-%d')
-        cartao = st.selectbox("💳 Nome do cartão", cartoes)
-        fornecedor = st.text_input("📦 Nome do Fornecedor")
-        valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80")
+
+        cartao = st.selectbox("💳 Nome do cartão", cartoes, key="cartao")
+        fornecedor = st.text_input("📦 Nome do Fornecedor", key="fornecedor")
+        valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80", key="valor_str")
 
         try:
             valor_float = float(valor_str.replace("R$", "").replace(".", "").replace(",", "."))
@@ -171,15 +171,15 @@ if menu == "Inserir Compra":
         valor_formatado = f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         st.markdown(f"🔎 Valor interpretado: **{valor_formatado}**")
 
-        parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"])
-        parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=1) if parcelado == "Sim" else 1
+        parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"], key="parcelado")
+        parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=1, key="parcelas") if parcelado == "Sim" else 1
         valor_parcela = valor / parcelas if parcelas > 0 else 0.0
         st.markdown(f"💵 **Valor de cada parcela:** R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
-        comprador = st.text_input("👤 Nome do Comprador")
-        email_opcional = st.text_input("📧 E-mail (opcional)")
-        descricao = st.text_area("📝 Descrição da Compra")
-        comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
+        comprador = st.text_input("👤 Nome do Comprador", key="comprador")
+        email_opcional = st.text_input("📧 E-mail (opcional)", key="email")
+        descricao = st.text_area("📝 Descrição da Compra", key="descricao")
+        comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"], key="comprovante")
 
         if st.button("✅ Salvar Compra"):
             erros = []
@@ -227,20 +227,24 @@ if menu == "Inserir Compra":
                     enviar_email(email_opcional, dados_email)
 
                 st.success("✅ Compra registrada com sucesso!")
-                st.session_state.form_submitted = True
+                st.session_state.nova_compra = True
+                st.experimental_rerun()
+
+    # Botão Nova Compra
+    if st.session_state.nova_compra:
+        st.markdown("---")
+        if st.button("🆕 Nova Compra"):
+            for key in list(st.session_state.keys()):
+                if key not in ["google_service_account", "email"]:
+                    del st.session_state[key]
+            st.experimental_rerun()
 
 # ================================
-# Botão de Nova Compra (Reset)
+# Visualização de Compras
 # ================================
-if st.session_state.get("form_submitted", False):
-    st.markdown("---")
-    if st.button("🆕 Nova Compra"):
-        # Limpa todos os campos exceto configurações sensíveis
-        for key in list(st.session_state.keys()):
-            if key not in ["google_service_account", "email", "form_submitted"]:
-                del st.session_state[key]
-        st.session_state["form_submitted"] = False
-        st.experimental_rerun()
+elif menu == "Visualizar Compras":
+    # ... (essa parte permanece como no seu código original, sem alterações)
+    pass
 
 
 # ================================
