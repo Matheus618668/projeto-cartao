@@ -154,7 +154,7 @@ if menu == "Inserir Compra":
 
     if st.session_state.form_submitted:
         st.session_state.form_submitted = False
-        st.experimental_rerun()
+        st.rerun()
 
     col_margem, col_conteudo, col_fim = st.columns([1, 4, 1])
     with col_conteudo:
