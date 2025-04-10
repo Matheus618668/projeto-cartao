@@ -182,6 +182,8 @@ if menu == "Inserir Compra":
                 worksheet.append_row(linha)
 
             st.success("✅ Compra registrada com sucesso!")
+            st.experimental_rerun()
+
 
 # ================================
 # 8. Página: Visualização de Compras
