@@ -146,19 +146,16 @@ st.markdown("""
 st.title("🧾 Validador de Compras com Cartão de Crédito")
 menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar Compras"])
 
+
 # ================================
 # Inserção de Dados
 # ================================
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
 
-    if "nova_compra" not in st.session_state:
-        st.session_state.nova_compra = False
-
     col_margem, col_conteudo, col_fim = st.columns([1, 4, 1])
     with col_conteudo:
         data = datetime.today().strftime('%Y-%m-%d')
-
         cartao = st.selectbox("💳 Nome do cartão", cartoes, key="cartao")
         fornecedor = st.text_input("📦 Nome do Fornecedor", key="fornecedor")
         valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80", key="valor_str")
@@ -227,25 +224,14 @@ if menu == "Inserir Compra":
                     enviar_email(email_opcional, dados_email)
 
                 st.success("✅ Compra registrada com sucesso!")
-                st.session_state.nova_compra = True
-                st.experimental_rerun()
-
-    # Botão Nova Compra
-    if st.session_state.nova_compra:
-        st.markdown("---")
-        if st.button("🆕 Nova Compra"):
-            for key in list(st.session_state.keys()):
-                if key not in ["google_service_account", "email"]:
-                    del st.session_state[key]
-            st.experimental_rerun()
 
 # ================================
-# Visualização de Compras
+# Botão de Nova Compra (Reset)
 # ================================
-elif menu == "Visualizar Compras":
-    # ... (essa parte permanece como no seu código original, sem alterações)
-    pass
-
+    st.markdown("---")
+    if st.button("🆕 Nova Compra"):
+        st.session_state.clear()
+        st.experimental_rerun()
 
 # ================================
 # Visualização
