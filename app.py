@@ -1,3 +1,7 @@
+# ================================
+#  Validador de Compras com Cartão de Crédito
+# ================================
+
 import streamlit as st
 import pandas as pd
 import os
@@ -114,7 +118,7 @@ st.title("🧾 Validador de Compras com Cartão de Crédito")
 menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar Compras"])
 
 # ================================
-# 7. Página: Inserção de Dados
+# 7. Inserção de Compras
 # ================================
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
@@ -123,6 +127,7 @@ if menu == "Inserir Compra":
         st.session_state["form_submitted"] = False
 
     if st.session_state["form_submitted"]:
+        st.session_state["form_submitted"] = False
         st.experimental_rerun()
 
     with st.form("form_compras", clear_on_submit=True):
@@ -133,17 +138,17 @@ if menu == "Inserir Compra":
         valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80")
         try:
             valor_float = float(valor_str.replace("R$", "").replace(".", "").replace(",", "."))
-            valor_formatado = f"R$ {valor_float:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         except:
             valor_float = 0.0
-            valor_formatado = "R$ 0,00"
-
-        valor = valor_float
+        valor_formatado = f"R$ {valor_float:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         st.markdown(f"🔎 Valor interpretado: **{valor_formatado}**")
 
         parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"])
-        parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=1) if parcelado == "Sim" else 1
-        valor_parcela = valor / parcelas if parcelas > 0 else 0.0
+        parcelas = 1
+        if parcelado == "Sim":
+            parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=1)
+
+        valor_parcela = valor_float / parcelas if parcelas else 0.0
         st.markdown(f"💵 **Valor de cada parcela:** R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
         comprador = st.text_input("👤 Nome do Comprador")
@@ -154,18 +159,12 @@ if menu == "Inserir Compra":
 
         if submitted:
             erros = []
-            if not fornecedor:
-                erros.append("Fornecedor não informado.")
-            if valor <= 0:
-                erros.append("Valor deve ser maior que zero.")
-            if not comprador:
-                erros.append("Nome do comprador não informado.")
-            if not cartao:
-                erros.append("Cartão não selecionado.")
-            if not descricao:
-                erros.append("Descrição da compra não informada.")
-            if not comprovante:
-                erros.append("Comprovante não anexado.")
+            if not fornecedor: erros.append("Fornecedor não informado.")
+            if valor_float <= 0: erros.append("Valor deve ser maior que zero.")
+            if not comprador: erros.append("Nome do comprador não informado.")
+            if not cartao: erros.append("Cartão não selecionado.")
+            if not descricao: erros.append("Descrição da compra não informada.")
+            if not comprovante: erros.append("Comprovante não anexado.")
 
             if erros:
                 st.error("\n".join(["❌ " + erro for erro in erros]))
@@ -181,7 +180,8 @@ if menu == "Inserir Compra":
                 for i in range(parcelas):
                     parcela_atual = f"{i+1}/{parcelas}" if parcelas > 1 else "1/1"
                     novas_linhas.append([
-                        data, cartao, fornecedor, valor, parcelado, parcelas, valor_parcela, comprador, parcela_atual, descricao, link_drive
+                        data, cartao, fornecedor, valor_float, parcelado, parcelas,
+                        valor_parcela, comprador, parcela_atual, descricao, link_drive
                     ])
 
                 df = pd.concat([df, pd.DataFrame(novas_linhas, columns=colunas_corretas)], ignore_index=True)
@@ -194,18 +194,16 @@ if menu == "Inserir Compra":
                 st.session_state["form_submitted"] = True
 
 # ================================
-# 8. Página: Visualização de Compras
+# 8. Visualização de Compras
 # ================================
 elif menu == "Visualizar Compras":
     st.subheader("📊 Visualização de Compras Registradas")
 
-    # Leitura bruta da planilha
     rows = worksheet.get_all_values()
     headers = rows[0]
     dados = rows[1:]
     df = pd.DataFrame(dados, columns=headers)
 
-    # Conversão segura de "Valor" e "Valor Parcela"
     def parse_valor(valor_str):
         try:
             return float(valor_str.replace("R$", "").replace(".", "").replace(",", "."))
@@ -215,14 +213,13 @@ elif menu == "Visualizar Compras":
     df["Valor"] = df["Valor"].apply(parse_valor)
     df["Valor Parcela"] = df["Valor Parcela"].apply(parse_valor)
 
-    # Filtros
     col1, col2, col3 = st.columns(3)
     with col1:
-        filtro_cartao = st.selectbox("Filtrar por Cartão:", options=["Todos"] + sorted(df["Cartão"].dropna().unique().tolist()))
+        filtro_cartao = st.selectbox("Filtrar por Cartão:", ["Todos"] + sorted(df["Cartão"].dropna().unique().tolist()))
     with col2:
-        filtro_comprador = st.selectbox("Filtrar por Comprador:", options=["Todos"] + sorted(df["Comprador"].dropna().unique().tolist()))
+        filtro_comprador = st.selectbox("Filtrar por Comprador:", ["Todos"] + sorted(df["Comprador"].dropna().unique().tolist()))
     with col3:
-        filtro_empresa = st.selectbox("Filtrar por Empresa:", options=["Todos", "Moon Ventures", "Minimal Club", "Hoomy"])
+        filtro_empresa = st.selectbox("Filtrar por Empresa:", ["Todos"] + list(PASTAS_EMPRESA.keys()))
 
     if filtro_cartao != "Todos":
         df = df[df["Cartão"] == filtro_cartao]
@@ -232,21 +229,18 @@ elif menu == "Visualizar Compras":
         cartoes_empresa = [k for k, v in mapa_empresas.items() if v == filtro_empresa]
         df = df[df["Cartão"].isin(cartoes_empresa)]
 
-    # Formatação visual idêntica à planilha
     df_exibicao = df.copy()
     df_exibicao["Valor"] = df_exibicao["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
     df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
 
     st.dataframe(df_exibicao, use_container_width=True)
 
-    # Gráfico com valores reais
     st.markdown("---")
     st.markdown("### 💳 Gastos por Cartão")
     if not df.empty:
         df_grafico = df.drop_duplicates(subset=["Data", "Cartão", "Fornecedor", "Valor", "Comprador"])
         grafico = df_grafico.groupby("Cartão")["Valor"].sum().reset_index()
         grafico["Total Formatado"] = grafico["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-
         st.dataframe(grafico[["Cartão", "Total Formatado"]], use_container_width=True)
         st.bar_chart(data=grafico, x="Cartão", y="Valor")
     else:
