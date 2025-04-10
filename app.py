@@ -122,8 +122,6 @@ def enviar_email(destinatario, dados):
         st.warning(f"Email não enviado: {e}")
 
 
-# ... (importações e autenticações permanecem iguais)
-
 # ================================
 # 7. App Principal
 # ================================
@@ -142,6 +140,13 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+# Se a URL tiver o parâmetro ?new=1, força a limpeza de estado
+if "new" in st.experimental_get_query_params():
+    for chave in list(st.session_state.keys()):
+        if chave not in ["google_service_account", "email"]:
+            del st.session_state[chave]
+    st.experimental_set_query_params()  # limpa os parâmetros da URL
 
 st.title("🧾 Validador de Compras com Cartão de Crédito")
 menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar Compras"])
@@ -241,14 +246,14 @@ if menu == "Inserir Compra":
             st.success("✅ Compra registrada com sucesso!")
             st.session_state["compra_salva"] = True
 
-    # Botão Nova Compra (Reset)
     if st.session_state.get("compra_salva", False):
-        st.markdown("---")
-        if st.button("🆕 Nova Compra"):
-            for campo in list(st.session_state.keys()):
-                if campo not in ["google_service_account", "email"]:
-                    del st.session_state[campo]
-            st.rerun()
+    st.markdown("---")
+    if st.button("🆕 Nova Compra"):
+        for chave in list(st.session_state.keys()):
+            if chave not in ["google_service_account", "email"]:
+                del st.session_state[chave]
+        # Redireciona o usuário recarregando a página com query params
+        st.experimental_set_query_params(new="1")
 
 
 # ================================
