@@ -16,7 +16,6 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-
 # ================================
 # 1. Autenticação Google Sheets e Drive
 # ================================
@@ -127,7 +126,6 @@ def enviar_email(destinatario, dados):
     except Exception as e:
         st.warning(f"Email não enviado: {e}")
 
-
 # ================================
 # 7. App Principal
 # ================================
@@ -137,7 +135,13 @@ colunas_corretas = ["Data", "Cartão", "Fornecedor", "Valor", "Parcelado", "Parc
 if not os.path.exists(data_file):
     pd.DataFrame(columns=colunas_corretas).to_excel(data_file, index=False)
 
-st.set_page_config(page_title="Validador de Compras", layout="centered")
+# Reset automático ao abrir com ?new=1
+if "new" in st.query_params:
+    for chave in list(st.session_state.keys()):
+        if chave not in ["google_service_account", "email"]:
+            del st.session_state[chave]
+    st.query_params.clear()
+
 st.markdown("""
 <style>
     .main {
@@ -147,22 +151,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-
-
-# Reset automático ao abrir com ?new=1
-if "new" in st.query_params:
-    for chave in list(st.session_state.keys()):
-        if chave not in ["google_service_account", "email"]:
-            del st.session_state[chave]
-    st.query_params.clear()
-
 st.title("🧾 Validador de Compras com Cartão de Crédito")
 menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar Compras"])
 
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
 
-    # Inicializar os campos no session_state
     campos = {
         "cartao": "",
         "fornecedor": "",
@@ -178,7 +172,6 @@ if menu == "Inserir Compra":
         if campo not in st.session_state:
             st.session_state[campo] = valor_inicial
 
-    # Atualizar valores dos inputs
     cartao = st.selectbox("💳 Nome do cartão", cartoes, key="cartao")
     fornecedor = st.text_input("📦 Nome do Fornecedor", key="fornecedor")
     valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80", key="valor_str")
@@ -254,14 +247,13 @@ if menu == "Inserir Compra":
             st.success("✅ Compra registrada com sucesso!")
             st.session_state["compra_salva"] = True
 
-# Botão de Nova Compra
-if st.session_state.get("compra_salva", False):
-    st.markdown("---")
-    if st.button("🆕 Nova Compra"):
-        st.query_params["new"] = "1"
-        st.session_state["compra_salva"] = False
-        st.rerun()
-
+    # Botão de Nova Compra (Reset)
+    if st.session_state.get("compra_salva", False):
+        st.markdown("---")
+        if st.button("🆕 Nova Compra"):
+            st.query_params["new"] = "1"
+            st.session_state["compra_salva"] = False
+            st.rerun()
 
 # ================================
 # Visualização
