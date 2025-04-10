@@ -118,9 +118,6 @@ menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar C
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
 
-    if "compra_salva" not in st.session_state:
-        st.session_state.compra_salva = False
-
     data = datetime.today().strftime('%Y-%m-%d')
     cartao = st.selectbox("💳 Nome do cartão", cartoes)
     fornecedor = st.text_input("📦 Nome do Fornecedor")
@@ -149,9 +146,8 @@ if menu == "Inserir Compra":
     descricao = st.text_area("📝 Descrição da Compra")
     comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
 
-    salvar = st.button("✅ Salvar Compra")
-
-    if salvar and not st.session_state.compra_salva:
+    submit = st.button("✅ Salvar Compra")
+    if submit:
         erros = []
         if not fornecedor:
             erros.append("Fornecedor não informado.")
@@ -190,11 +186,7 @@ if menu == "Inserir Compra":
                 worksheet.append_row(linha)
 
             st.success("✅ Compra registrada com sucesso!")
-            st.session_state.compra_salva = True
             st.experimental_rerun()
-
-    if st.session_state.compra_salva:
-        st.session_state.compra_salva = False
 
 # ================================
 # 8. Página: Visualização de Compras
@@ -225,8 +217,8 @@ elif menu == "Visualizar Compras":
         df = df[df["Cartão"].isin(cartoes_empresa)]
 
     df_exibicao = df.copy()
-    df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else "")
     df_exibicao["Valor"] = df_exibicao["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else "")
+    df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else "")
 
     st.dataframe(df_exibicao, use_container_width=True)
 
