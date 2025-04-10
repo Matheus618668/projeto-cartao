@@ -119,76 +119,83 @@ menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar C
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
 
-    data = datetime.today().strftime('%Y-%m-%d')
-    cartao = st.selectbox("💳 Nome do cartão", cartoes)
-    fornecedor = st.text_input("📦 Nome do Fornecedor")
+    if "form_submitted" not in st.session_state:
+        st.session_state["form_submitted"] = False
 
-    valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80")
-    try:
-        valor_float = float(valor_str.replace("R$", "").replace(".", "").replace(",", "."))
-        valor_formatado = f"R$ {valor_float:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except:
-        valor_float = 0.0
-        valor_formatado = "R$ 0,00"
+    if st.session_state["form_submitted"]:
+        st.experimental_rerun()
 
-    valor = valor_float
-    st.markdown(f"🔎 Valor interpretado: **{valor_formatado}**")
+    with st.form("form_compras", clear_on_submit=True):
+        data = datetime.today().strftime('%Y-%m-%d')
+        cartao = st.selectbox("💳 Nome do cartão", cartoes)
+        fornecedor = st.text_input("📦 Nome do Fornecedor")
 
-    parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"])
-    parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=1) if parcelado == "Sim" else 1
-    valor_parcela = valor / parcelas if parcelas > 0 else 0.0
-    st.markdown(f"💵 **Valor de cada parcela:** R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+        valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80")
+        try:
+            valor_float = float(valor_str.replace("R$", "").replace(".", "").replace(",", "."))
+            valor_formatado = f"R$ {valor_float:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        except:
+            valor_float = 0.0
+            valor_formatado = "R$ 0,00"
 
-    comprador = st.text_input("👤 Nome do Comprador")
-    descricao = st.text_area("📝 Descrição da Compra")
-    comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
+        valor = valor_float
+        st.markdown(f"🔎 Valor interpretado: **{valor_formatado}**")
 
-    if st.button("✅ Salvar Compra"):
-        erros = []
-        if not fornecedor:
-            erros.append("Fornecedor não informado.")
-        if valor <= 0:
-            erros.append("Valor deve ser maior que zero.")
-        if not comprador:
-            erros.append("Nome do comprador não informado.")
-        if not cartao:
-            erros.append("Cartão não selecionado.")
-        if not descricao:
-            erros.append("Descrição da compra não informada.")
-        if not comprovante:
-            erros.append("Comprovante não anexado.")
+        parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"])
+        parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=1) if parcelado == "Sim" else 1
+        valor_parcela = valor / parcelas if parcelas > 0 else 0.0
+        st.markdown(f"💵 **Valor de cada parcela:** R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
-        if erros:
-            st.error("\n".join(["❌ " + erro for erro in erros]))
-        else:
-            empresa = mapa_empresas.get(cartao, "Outros")
-            link_drive = upload_to_drive(comprovante, empresa)
+        comprador = st.text_input("👤 Nome do Comprador")
+        descricao = st.text_area("📝 Descrição da Compra")
+        comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
 
-            df = pd.read_excel(data_file)
-            if list(df.columns) != colunas_corretas:
-                df = df.reindex(columns=colunas_corretas)
+        submitted = st.form_submit_button("✅ Salvar Compra")
 
-            novas_linhas = []
-            for i in range(parcelas):
-                parcela_atual = f"{i+1}/{parcelas}" if parcelas > 1 else "1/1"
-                novas_linhas.append([
-                    data, cartao, fornecedor, valor, parcelado, parcelas, valor_parcela, comprador, parcela_atual, descricao, link_drive
-                ])
+        if submitted:
+            erros = []
+            if not fornecedor:
+                erros.append("Fornecedor não informado.")
+            if valor <= 0:
+                erros.append("Valor deve ser maior que zero.")
+            if not comprador:
+                erros.append("Nome do comprador não informado.")
+            if not cartao:
+                erros.append("Cartão não selecionado.")
+            if not descricao:
+                erros.append("Descrição da compra não informada.")
+            if not comprovante:
+                erros.append("Comprovante não anexado.")
 
-            df = pd.concat([df, pd.DataFrame(novas_linhas, columns=colunas_corretas)], ignore_index=True)
-            df.to_excel(data_file, index=False)
+            if erros:
+                st.error("\n".join(["❌ " + erro for erro in erros]))
+            else:
+                empresa = mapa_empresas.get(cartao, "Outros")
+                link_drive = upload_to_drive(comprovante, empresa)
 
-            for linha in novas_linhas:
-                worksheet.append_row(linha)
+                df = pd.read_excel(data_file)
+                if list(df.columns) != colunas_corretas:
+                    df = df.reindex(columns=colunas_corretas)
 
-            st.success("✅ Compra registrada com sucesso!")
-            st.rerun()
+                novas_linhas = []
+                for i in range(parcelas):
+                    parcela_atual = f"{i+1}/{parcelas}" if parcelas > 1 else "1/1"
+                    novas_linhas.append([
+                        data, cartao, fornecedor, valor, parcelado, parcelas, valor_parcela, comprador, parcela_atual, descricao, link_drive
+                    ])
 
+                df = pd.concat([df, pd.DataFrame(novas_linhas, columns=colunas_corretas)], ignore_index=True)
+                df.to_excel(data_file, index=False)
+
+                for linha in novas_linhas:
+                    worksheet.append_row(linha)
+
+                st.success("✅ Compra registrada com sucesso!")
+                st.session_state["form_submitted"] = True
 
 # ================================
 # 8. Página: Visualização de Compras
 # ================================
-
 elif menu == "Visualizar Compras":
     st.subheader("📊 Visualização de Compras Registradas")
 
@@ -239,7 +246,7 @@ elif menu == "Visualizar Compras":
         df_grafico = df.drop_duplicates(subset=["Data", "Cartão", "Fornecedor", "Valor", "Comprador"])
         grafico = df_grafico.groupby("Cartão")["Valor"].sum().reset_index()
         grafico["Total Formatado"] = grafico["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-        
+
         st.dataframe(grafico[["Cartão", "Total Formatado"]], use_container_width=True)
         st.bar_chart(data=grafico, x="Cartão", y="Valor")
     else:
