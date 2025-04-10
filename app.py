@@ -143,7 +143,7 @@ st.markdown("""
 
 st.set_page_config(page_title="Validador de Compras", layout="centered")
 
-# Se a URL tiver o parâmetro ?new=1, limpa o estado
+# Reset automático ao abrir com ?new=1
 if "new" in st.query_params:
     for chave in list(st.session_state.keys()):
         if chave not in ["google_service_account", "email"]:
