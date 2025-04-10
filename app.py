@@ -112,6 +112,7 @@ st.title("🧾 Validador de Compras com Cartão de Crédito")
 
 menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar Compras"])
 
+
 # ================================
 # 7. Página: Inserção de Dados
 # ================================
@@ -123,7 +124,6 @@ if menu == "Inserir Compra":
 
     if st.session_state.compra_salva:
         st.success("✅ Compra registrada com sucesso!")
-        st.audio("https://www.soundjay.com/buttons/sounds/button-3.mp3", format="audio/mp3")
         if st.button("➕ Nova Compra"):
             st.session_state.compra_salva = False
             st.rerun()
