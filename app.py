@@ -109,7 +109,7 @@ def upload_to_drive(file, empresa):
 # ================================
 # 6. Envio de Email com Anexo
 # ================================
-def enviar_email(destinatario, dados, anexo_path=None, nome_arquivo=None):
+def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
     config = st.secrets["email"]
 
     msg = MIMEMultipart()
@@ -120,12 +120,15 @@ def enviar_email(destinatario, dados, anexo_path=None, nome_arquivo=None):
     corpo = "".join([f"<b>{chave}:</b> {valor}<br>" for chave, valor in dados.items()])
     msg.attach(MIMEText(corpo, 'html'))
 
-    if anexo_path and nome_arquivo:
-        with open(anexo_path, "rb") as f:
-            part = MIMEBase("application", "octet-stream")
-            part.set_payload(f.read())
+    # Anexar o arquivo se houver
+    if anexo_path and os.path.exists(anexo_path):
+        with open(anexo_path, "rb") as file:
+            from email.mime.base import MIMEBase
+            from email import encoders
+            part = MIMEBase('application', 'octet-stream')
+            part.set_payload(file.read())
             encoders.encode_base64(part)
-            part.add_header("Content-Disposition", f"attachment; filename={nome_arquivo}")
+            part.add_header('Content-Disposition', f'attachment; filename="{anexo_nome}"')
             msg.attach(part)
 
     try:
