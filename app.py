@@ -73,11 +73,6 @@ mapa_empresas = {
     "Conta Simples Hoomy": "Hoomy"
 }
 
-logos_empresas = {
-    "Moon Ventures": "images/moon.png",
-    "Minimal Club": "images/minimal.png",
-    "Hoomy": "images/hoomy.png"
-}
 # ================================
 # 5. Função para upload no Google Drive
 # ================================
@@ -159,14 +154,8 @@ if "new" in st.query_params:
 st.markdown("""
 <style>
     .main {
-        padding: 40px;
-        border: 2px solid #ccc;
-        border-radius: 20px;
-        background-color: #f9f9f9;
-        margin: 20px;
-    }
-    .block-container {
-        padding: 2rem 4rem !important;
+        padding-left: 40px;
+        padding-right: 40px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -192,9 +181,6 @@ if menu == "Inserir Compra":
             st.session_state[campo] = valor_inicial
 
     cartao = st.selectbox("💳 Nome do cartão", cartoes)
-    empresa_selecionada = mapa_empresas.get(cartao)
-    if empresa_selecionada and empresa_selecionada in logos_empresas:
-        st.image(logos_empresas[empresa_selecionada], width=150)
     fornecedor = st.text_input("📦 Nome do Fornecedor", key="fornecedor")
     valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80", key="valor_str")
 
