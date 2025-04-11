@@ -256,7 +256,7 @@ if menu == "Inserir Compra":
                     "Comprador": comprador,
                     "Descrição": descricao
                 }
-                enviar_email(email_opcional, dados_email, anexo_path=path_comprovante, nome_arquivo=comprovante.name)
+                enviar_email(email_opcional, dados_email, anexo_path=path_comprovante, anexo_nome=comprovante.name)
 
             st.success("✅ Compra registrada com sucesso!")
             st.session_state["compra_salva"] = True
