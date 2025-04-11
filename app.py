@@ -154,17 +154,14 @@ if "new" in st.query_params:
 st.markdown("""
 <style>
     .main {
-        padding-left: 40px;
-        padding-right: 40px;
-    }
-    .form-container {
-        border: 2px solid #cccccc;
-        border-radius: 15px;
-        padding: 25px;
+        padding: 40px;
+        border: 2px solid #ccc;
+        border-radius: 20px;
         background-color: #f9f9f9;
-        box-shadow: 0px 0px 12px rgba(0, 0, 0, 0.05);
-        margin-top: 20px;
-        margin-bottom: 20px;
+        margin: 20px;
+    }
+    .block-container {
+        padding: 2rem 4rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
