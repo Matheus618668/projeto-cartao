@@ -15,6 +15,8 @@ import tempfile
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 
 # ================================
 # 1. Autenticação Google Sheets e Drive
@@ -98,16 +100,16 @@ def upload_to_drive(file, empresa):
             'role': 'reader'
         })
 
-        return gfile['alternateLink']
+        return gfile['alternateLink'], tmp_path  # Retorna também o caminho temporário
 
     except Exception as e:
         st.error(f"❌ Erro ao fazer upload para o Drive: {e}")
         st.stop()
 
 # ================================
-# 6. Envio de Email
+# 6. Envio de Email com Anexo
 # ================================
-def enviar_email(destinatario, dados):
+def enviar_email(destinatario, dados, anexo_path=None, nome_arquivo=None):
     config = st.secrets["email"]
 
     msg = MIMEMultipart()
@@ -117,6 +119,14 @@ def enviar_email(destinatario, dados):
 
     corpo = "".join([f"<b>{chave}:</b> {valor}<br>" for chave, valor in dados.items()])
     msg.attach(MIMEText(corpo, 'html'))
+
+    if anexo_path and nome_arquivo:
+        with open(anexo_path, "rb") as f:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(f.read())
+            encoders.encode_base64(part)
+            part.add_header("Content-Disposition", f"attachment; filename={nome_arquivo}")
+            msg.attach(part)
 
     try:
         with smtplib.SMTP(config["smtp_server"], config["smtp_port"]) as server:
@@ -213,7 +223,7 @@ if menu == "Inserir Compra":
             st.error("\n".join(["❌ " + erro for erro in erros]))
         else:
             empresa = mapa_empresas.get(cartao, "Outros")
-            link_drive = upload_to_drive(comprovante, empresa)
+            link_drive, path_comprovante = upload_to_drive(comprovante, empresa)
 
             df = pd.read_excel(data_file)
             if list(df.columns) != colunas_corretas:
@@ -243,12 +253,11 @@ if menu == "Inserir Compra":
                     "Comprador": comprador,
                     "Descrição": descricao
                 }
-                enviar_email(email_opcional, dados_email)
+                enviar_email(email_opcional, dados_email, anexo_path=path_comprovante, nome_arquivo=comprovante.name)
 
             st.success("✅ Compra registrada com sucesso!")
             st.session_state["compra_salva"] = True
 
-    # Botão de Nova Compra (Reset)
     if st.session_state.get("compra_salva", False):
         st.markdown("---")
         if st.button("🆕 Nova Compra"):
