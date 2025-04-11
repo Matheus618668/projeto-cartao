@@ -160,7 +160,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🗞 Validador de Compras com Cartão de Crédito")
+st.title("💳 Validador de Compras com Cartão de Crédito")
 menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar Compras"])
 
 if menu == "Inserir Compra":
