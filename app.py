@@ -82,7 +82,7 @@ def upload_to_drive(file, empresa):
         st.error(f"❌ ID da pasta não encontrado para a empresa: {empresa}")
         st.stop()
 
-    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.name)[-1]) as tmp:
         tmp.write(file.read())
         tmp_path = tmp.name
 
@@ -92,15 +92,12 @@ def upload_to_drive(file, empresa):
         gfile = drive.CreateFile({'title': filename, 'parents': [{'id': folder_id}]})
         gfile.SetContentFile(tmp_path)
         gfile.Upload()
-        os.remove(tmp_path)
-
         gfile.InsertPermission({
             'type': 'anyone',
             'value': 'anyone',
             'role': 'reader'
         })
-
-        return gfile['alternateLink'], tmp_path  # Retorna também o caminho temporário
+        return gfile['alternateLink'], tmp_path
 
     except Exception as e:
         st.error(f"❌ Erro ao fazer upload para o Drive: {e}")
@@ -120,12 +117,9 @@ def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
     corpo = "".join([f"<b>{chave}:</b> {valor}<br>" for chave, valor in dados.items()])
     msg.attach(MIMEText(corpo, 'html'))
 
-    # Se houver anexo, adiciona no e-mail
     if anexo_path and anexo_nome:
         try:
             with open(anexo_path, "rb") as f:
-                from email.mime.base import MIMEBase
-                from email import encoders
                 part = MIMEBase("application", "octet-stream")
                 part.set_payload(f.read())
                 encoders.encode_base64(part)
@@ -142,7 +136,6 @@ def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
     except Exception as e:
         st.warning(f"❌ Email não enviado: {e}")
 
-
 # ================================
 # 7. App Principal
 # ================================
@@ -152,7 +145,6 @@ colunas_corretas = ["Data", "Cartão", "Fornecedor", "Valor", "Parcelado", "Parc
 if not os.path.exists(data_file):
     pd.DataFrame(columns=colunas_corretas).to_excel(data_file, index=False)
 
-# Reset automático ao abrir com ?new=1
 if "new" in st.query_params:
     for chave in list(st.session_state.keys()):
         if chave not in ["google_service_account", "email"]:
@@ -168,12 +160,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🧾 Validador de Compras com Cartão de Crédito")
+st.title("🗞 Validador de Compras com Cartão de Crédito")
 menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar Compras"])
 
-# ================================
-# Página: Inserir Compra
-# ================================
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
 
@@ -260,14 +249,11 @@ if menu == "Inserir Compra":
                     "Comprador": comprador,
                     "Descrição": descricao
                 }
-                
-                # Salvar o comprovante localmente para anexar
-with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(comprovante.name)[-1]) as tmpfile:
-    tmpfile.write(comprovante.getvalue())
-    path_comprovante = tmpfile.name
-enviar_email(email_opcional, dados_email, anexo_path=path_comprovante, anexo_nome=comprovante.name)
+                enviar_email(email_opcional, dados_email, anexo_path=path_comprovante, anexo_nome=comprovante.name)
+
             st.success("✅ Compra registrada com sucesso!")
             st.session_state["compra_salva"] = True
+
     if st.session_state.get("compra_salva", False):
         st.markdown("---")
         if st.button("🆕 Nova Compra"):
@@ -275,9 +261,6 @@ enviar_email(email_opcional, dados_email, anexo_path=path_comprovante, anexo_nom
             st.session_state["compra_salva"] = False
             st.rerun()
 
-# ================================
-# Visualização
-# ================================
 elif menu == "Visualizar Compras":
     st.subheader("📊 Visualização de Compras Registradas")
     rows = worksheet.get_all_values()
