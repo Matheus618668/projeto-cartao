@@ -73,11 +73,10 @@ mapa_empresas = {
     "Conta Simples Hoomy": "Hoomy"
 }
 
-# Imagens das empresas
 logos_empresas = {
-    "Moon Ventures": "https://i.imgur.com/HRiUQyn.png",
-    "Minimal Club": "https://i.imgur.com/nmt6WLu.png",
-    "Hoomy": "https://i.imgur.com/6Ttf0kD.png"
+    "Moon Ventures": "https://i.imgur.com/EfL0h1N.png",
+    "Minimal Club": "https://i.imgur.com/2ok9c7D.png",
+    "Hoomy": "https://i.imgur.com/YmEKbFc.png"
 }
 
 # ================================
@@ -194,11 +193,9 @@ if menu == "Inserir Compra":
             st.session_state[campo] = valor_inicial
 
     cartao = st.selectbox("💳 Nome do cartão", cartoes)
-
     empresa_selecionada = mapa_empresas.get(cartao)
-    logo_url = logos_empresas.get(empresa_selecionada)
-    if logo_url:
-        st.image(logo_url, width=150)
+    if empresa_selecionada and empresa_selecionada in logos_empresas:
+        st.image(logos_empresas[empresa_selecionada], width=150)
     fornecedor = st.text_input("📦 Nome do Fornecedor", key="fornecedor")
     valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80", key="valor_str")
 
