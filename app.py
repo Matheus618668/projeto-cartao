@@ -12,11 +12,14 @@ from oauth2client.service_account import ServiceAccountCredentials
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 import tempfile
+<<<<<<< HEAD
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
+=======
+>>>>>>> 43b9019 (Atualiza requirements com versões compatíveis)
 
 # ================================
 # 1. Autenticação Google Sheets e Drive
@@ -42,6 +45,7 @@ SHEET_ID = "1CcrV5Gs3LwrLXgjLBgk2M02SAnDVJGuHhqY_pi56Mnw"
 worksheet = gc.open_by_key(SHEET_ID).sheet1
 
 # ================================
+<<<<<<< HEAD
 # 3. IDs das pastas fixas no Google Drive
 # ================================
 PASTAS_EMPRESA = {
@@ -142,9 +146,59 @@ def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
 data_file = "data/compras.xlsx"
 os.makedirs("data", exist_ok=True)
 colunas_corretas = ["Data", "Cartão", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante"]
+=======
+# 3. Função para upload no Google Drive
+# ================================
+def upload_to_drive(file, empresa):
+    # Cria pasta se não existir (cache em memoria por sessão)
+    if "folders" not in st.session_state:
+        st.session_state.folders = {}
+
+    if empresa not in st.session_state.folders:
+        folder_metadata = {
+            'title': empresa,
+            'mimeType': 'application/vnd.google-apps.folder'
+        }
+        folder = drive.CreateFile(folder_metadata)
+        folder.Upload()
+        st.session_state.folders[empresa] = folder['id']
+    else:
+        folder_id = st.session_state.folders[empresa]
+
+    # Salvar arquivo temporário
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+        tmp.write(file.read())
+        tmp_path = tmp.name
+
+    # Upload para o Drive
+    filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.name}"
+    gfile = drive.CreateFile({'title': filename, 'parents': [{'id': st.session_state.folders[empresa]}]})
+    gfile.SetContentFile(tmp_path)
+    gfile.Upload()
+
+    # Deletar arquivo temporário
+    os.remove(tmp_path)
+
+    # Gerar link público
+    gfile.InsertPermission({
+        'type': 'anyone',
+        'value': 'anyone',
+        'role': 'reader'
+    })
+    return gfile['alternateLink']
+
+# ================================
+# 4. Configurações do app
+# ================================
+data_file = "data/compras.xlsx"
+os.makedirs("data", exist_ok=True)
+colunas_corretas = ["Data", "Cartão", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Comprador", "Comprovante"]
+
+>>>>>>> 43b9019 (Atualiza requirements com versões compatíveis)
 if not os.path.exists(data_file):
     pd.DataFrame(columns=colunas_corretas).to_excel(data_file, index=False)
 
+<<<<<<< HEAD
 if "new" in st.query_params:
     for chave in list(st.session_state.keys()):
         if chave not in ["google_service_account", "email"]:
@@ -183,6 +237,60 @@ if menu == "Inserir Compra":
     cartao = st.selectbox("💳 Nome do cartão", cartoes)
     fornecedor = st.text_input("📦 Nome do Fornecedor", key="fornecedor")
     valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80", key="valor_str")
+=======
+st.set_page_config(page_title="Validador de Compras", layout="centered")
+st.title("📟 Validador de Compras com Cartão de Crédito")
+st.subheader("Inserção de Dados da Compra")
+
+cartoes = [
+    "Inter Moon Ventures",
+    "Inter Minimal",
+    "Inter Hoomy",
+    "Bradesco Minimal",
+    "Bradesco Hoomy",
+    "Bradesco Moon Ventures"
+]
+mapa_empresas = {
+    "Inter Moon Ventures": "Moon Ventures",
+    "Bradesco Moon Ventures": "Moon Ventures",
+    "Inter Minimal": "Minimal Club",
+    "Bradesco Minimal": "Minimal Club",
+    "Inter Hoomy": "Hoomy",
+    "Bradesco Hoomy": "Hoomy"
+}
+
+# Entradas
+data = datetime.today().strftime('%Y-%m-%d')
+cartão = st.selectbox("💳 Nome do cartão", cartoes)
+fornecedor = st.text_input("📦 Nome do Fornecedor")
+valor = st.number_input("💰 Valor da Compra", min_value=0.0, format="%.2f")
+parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"])
+parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=1) if parcelado == "Sim" else 1
+comprador = st.text_input("👤 Nome do Comprador")
+comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
+
+# Botão de salvar
+if st.button("✅ Salvar Compra"):
+    if fornecedor and valor > 0 and comprador and cartão:
+        empresa = mapa_empresas.get(cartão, "Outros")
+
+        link_drive = "Nenhum"
+        if comprovante:
+            link_drive = upload_to_drive(comprovante, empresa)
+
+        df = pd.read_excel(data_file)
+        if list(df.columns) != colunas_corretas:
+            df = df.reindex(columns=colunas_corretas)
+
+        nova_linha = pd.DataFrame(
+            [[data, cartão, fornecedor, valor, parcelado, parcelas, comprador, link_drive]],
+            columns=colunas_corretas
+        )
+        df = pd.concat([df, nova_linha], ignore_index=True)
+        df.to_excel(data_file, index=False)
+
+        worksheet.append_row([data, cartão, fornecedor, valor, parcelado, parcelas, comprador, link_drive])
+>>>>>>> 43b9019 (Atualiza requirements com versões compatíveis)
 
     try:
         valor_float = float(valor_str.replace("R$", "").replace(".", "").replace(",", "."))
@@ -197,6 +305,7 @@ if menu == "Inserir Compra":
     if parcelado == "Sim":
         parcelas = st.number_input("📅 Quantidade de Parcelas", min_value=1, max_value=12, value=st.session_state["parcelas"], key="parcelas")
     else:
+<<<<<<< HEAD
         parcelas = 1
 
     valor_parcela = valor / parcelas if parcelas > 0 else 0.0
@@ -310,3 +419,6 @@ elif menu == "Visualizar Compras":
         st.bar_chart(data=grafico, x="Cartão", y="Valor")
     else:
         st.info("Nenhum dado para exibir o gráfico.")
+=======
+        st.error("❌ Por favor, preencha todos os campos obrigatórios.")
+>>>>>>> 43b9019 (Atualiza requirements com versões compatíveis)
