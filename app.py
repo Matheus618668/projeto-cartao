@@ -120,16 +120,19 @@ def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
     corpo = "".join([f"<b>{chave}:</b> {valor}<br>" for chave, valor in dados.items()])
     msg.attach(MIMEText(corpo, 'html'))
 
-    # Anexar o arquivo se houver
-    if anexo_path and os.path.exists(anexo_path):
-        with open(anexo_path, "rb") as file:
-            from email.mime.base import MIMEBase
-            from email import encoders
-            part = MIMEBase('application', 'octet-stream')
-            part.set_payload(file.read())
-            encoders.encode_base64(part)
-            part.add_header('Content-Disposition', f'attachment; filename="{anexo_nome}"')
-            msg.attach(part)
+    # Se houver anexo, adiciona no e-mail
+    if anexo_path and anexo_nome:
+        try:
+            with open(anexo_path, "rb") as f:
+                from email.mime.base import MIMEBase
+                from email import encoders
+                part = MIMEBase("application", "octet-stream")
+                part.set_payload(f.read())
+                encoders.encode_base64(part)
+                part.add_header("Content-Disposition", f"attachment; filename={anexo_nome}")
+                msg.attach(part)
+        except Exception as e:
+            st.warning(f"❗ Não foi possível anexar o arquivo: {e}")
 
     try:
         with smtplib.SMTP(config["smtp_server"], config["smtp_port"]) as server:
@@ -137,7 +140,8 @@ def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
             server.login(config["sender"], config["password"])
             server.sendmail(config["sender"], destinatario, msg.as_string())
     except Exception as e:
-        st.warning(f"Email não enviado: {e}")
+        st.warning(f"❌ Email não enviado: {e}")
+
 
 # ================================
 # 7. App Principal
@@ -256,7 +260,14 @@ if menu == "Inserir Compra":
                     "Comprador": comprador,
                     "Descrição": descricao
                 }
-                enviar_email(email_opcional, dados_email, anexo_path=path_comprovante, anexo_nome=comprovante.name)
+                
+                # Salvar o comprovante localmente para anexar
+with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(comprovante.name)[-1]) as tmpfile:
+    tmpfile.write(comprovante.getvalue())
+    path_comprovante = tmpfile.name
+
+enviar_email(email_opcional, dados_email, anexo_path=path_comprovante, anexo_nome=comprovante.name)
+
 
             st.success("✅ Compra registrada com sucesso!")
             st.session_state["compra_salva"] = True
