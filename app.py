@@ -160,7 +160,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("💳 Registra Aí!")
+st.title("Gestor de Compras Corporativas")
 menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar Compras"])
 
 if menu == "Inserir Compra":
