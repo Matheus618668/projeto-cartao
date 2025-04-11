@@ -154,11 +154,13 @@ st.markdown("""
 st.title("🧾 Validador de Compras com Cartão de Crédito")
 menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar Compras"])
 
+# ================================
+# Página: Inserir Compra
+# ================================
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
 
     campos = {
-        "cartao": "",
         "fornecedor": "",
         "valor_str": "",
         "parcelado": "Não",
@@ -172,7 +174,7 @@ if menu == "Inserir Compra":
         if campo not in st.session_state:
             st.session_state[campo] = valor_inicial
 
-    cartao = st.selectbox("💳 Nome do cartão", cartoes, index=cartoes.index(st.session_state.cartao) if st.session_state.cartao in cartoes else 0, key="cartao")
+    cartao = st.selectbox("💳 Nome do cartão", cartoes)
     fornecedor = st.text_input("📦 Nome do Fornecedor", key="fornecedor")
     valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80", key="valor_str")
 
@@ -204,7 +206,6 @@ if menu == "Inserir Compra":
         if not fornecedor: erros.append("Fornecedor não informado.")
         if valor <= 0: erros.append("Valor deve ser maior que zero.")
         if not comprador: erros.append("Nome do comprador não informado.")
-        if not cartao: erros.append("Cartão não selecionado.")
         if not descricao: erros.append("Descrição da compra não informada.")
         if not comprovante: erros.append("Comprovante não anexado.")
 
