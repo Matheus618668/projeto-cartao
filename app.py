@@ -157,6 +157,15 @@ st.markdown("""
         padding-left: 40px;
         padding-right: 40px;
     }
+    .form-container {
+        border: 2px solid #cccccc;
+        border-radius: 15px;
+        padding: 25px;
+        background-color: #f9f9f9;
+        box-shadow: 0px 0px 12px rgba(0, 0, 0, 0.05);
+        margin-top: 20px;
+        margin-bottom: 20px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -165,6 +174,7 @@ menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar C
 
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
+    st.markdown('<div class="form-container">', unsafe_allow_html=True)
 
     campos = {
         "fornecedor": "",
@@ -206,6 +216,8 @@ if menu == "Inserir Compra":
     email_opcional = st.text_input("📧 E-mail (opcional)", key="email_opcional")
     descricao = st.text_area("📝 Descrição da Compra", key="descricao")
     comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
+
+    st.markdown('</div>', unsafe_allow_html=True)  # Fecha o bloco com margem
 
     if st.button("✅ Salvar Compra"):
         erros = []
