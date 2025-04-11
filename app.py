@@ -265,11 +265,9 @@ if menu == "Inserir Compra":
 with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(comprovante.name)[-1]) as tmpfile:
     tmpfile.write(comprovante.getvalue())
     path_comprovante = tmpfile.name
-
 enviar_email(email_opcional, dados_email, anexo_path=path_comprovante, anexo_nome=comprovante.name)
             st.success("✅ Compra registrada com sucesso!")
             st.session_state["compra_salva"] = True
-
     if st.session_state.get("compra_salva", False):
         st.markdown("---")
         if st.button("🆕 Nova Compra"):
