@@ -74,11 +74,10 @@ mapa_empresas = {
 }
 
 logos_empresas = {
-    "Moon Ventures": "https://i.imgur.com/EfL0h1N.png",
-    "Minimal Club": "https://i.imgur.com/2ok9c7D.png",
-    "Hoomy": "https://i.imgur.com/YmEKbFc.png"
+    "Moon Ventures": "images/moon.png",
+    "Minimal Club": "images/minimal.png",
+    "Hoomy": "images/hoomy.png"
 }
-
 # ================================
 # 5. Função para upload no Google Drive
 # ================================
