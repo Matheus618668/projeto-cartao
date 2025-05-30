@@ -60,6 +60,7 @@ cartoes = [
     "Bradesco Minimal",
     "Conta Simples Hoomy",
     "Conta Simples Moon Ventures"
+    "Jeeves Moon Ventures"
 ]
 
 mapa_empresas = {
@@ -70,7 +71,8 @@ mapa_empresas = {
     "Bradesco Minimal": "Minimal Club",
     "Inter Hoomy": "Hoomy",
     "Bradesco Hoomy": "Hoomy",
-    "Conta Simples Hoomy": "Hoomy"
+    "Conta Simples Hoomy": "Hoomy",
+    "Jeeves Moon Ventures": "Moon Ventures"
 }
 
 # ================================
