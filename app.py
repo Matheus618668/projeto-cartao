@@ -59,7 +59,7 @@ cartoes = [
     "Inter Hoomy",
     "Bradesco Minimal",
     "Conta Simples Hoomy",
-    "Conta Simples Moon Ventures"
+    "Conta Simples Moon Ventures",
     "Jeeves Moon Ventures"
 ]
 
