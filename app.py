@@ -317,7 +317,7 @@ if menu == "Inserir Compra":
     empresa_selecionada = usuario_info['empresa']  # Valor padrão
     
     # Verificar se o usuário é João ou Ana
-    if usuario_info['nome'] in ["João Silva", "Ana Oliveira"]:
+    if usuario_info['nome'] in ["Mariana - Facilities", "Pedro Linhares - Logistica"]:
         # Opções de empresas disponíveis
         empresas_disponiveis = ["Moon Ventures", "Minimal Club", "Hoomy"]
         empresa_selecionada = st.selectbox(
