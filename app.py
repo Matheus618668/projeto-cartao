@@ -56,7 +56,6 @@ PASTAS_EMPRESA = {
 USUARIOS_CONFIG = {
     "joao": {
         "nome": "Mariana - Facilities",
-        "empresa": "Moon Ventures",
         "email": "Facilities@moonventures.com"
     },
     "maria": {
