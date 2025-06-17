@@ -59,7 +59,7 @@ USUARIOS_CONFIG = {
         "empresa": "Moon Ventures",
         "email": "Facilities@moonventures.com"
     },
-    "Joao Vicente": {
+    "Joao": {
         "nome": "João Vicente - Marketing",
         "empresa": "Minimal Club", 
         "email": "marketing@minimalclub.com"
