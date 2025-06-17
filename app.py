@@ -194,7 +194,6 @@ if menu == "Inserir Compra":
         if erros:
             st.error("\n".join(["❌ " + erro for erro in erros]))
         else:
-            empresa = mapa_empresas.get(cartao, "Outros")
             link_drive, path_comprovante = upload_to_drive(comprovante, empresa)
 
             df = pd.read_excel(data_file)
