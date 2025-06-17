@@ -206,40 +206,30 @@ def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
 # ================================
 def gerar_links_usuarios():
     """Gera links personalizados para cada usuário"""
-    # Tenta detectar a URL atual automaticamente
-    try:
-        # No Streamlit Cloud, geralmente pode ser detectada assim
-        base_url = "https://your-streamlit-app.streamlit.app"  # Substitua pela URL real
-        
-        # Você pode também tentar detectar automaticamente (funciona em alguns casos)
-        # import streamlit.web.bootstrap as bootstrap
-        # session_info = bootstrap._get_session_info()
-        # base_url = session_info.get('base_url_path', 'http://localhost:8501')
-        
-    except:
-        base_url = "http://localhost:8501"  # Fallback para desenvolvimento local
-    
+    # URL real do seu aplicativo
+    base_url = "https://projeto-cartao-hvavcfzkhdesmg9jtrygne.streamlit.app"
+
     st.subheader("🔗 Links Personalizados dos Usuários")
     st.info("Compartilhe estes links com cada usuário para acesso direto:")
-    
+
     for usuario_id, info in USUARIOS_CONFIG.items():
         link = f"{base_url}?user={usuario_id}"
         st.markdown(f"**{info['nome']}** ({info['empresa']})")
         st.code(link)
-        
+
         # Botão para testar o link diretamente
         if st.button(f"🧪 Testar link do {info['nome']}", key=f"test_{usuario_id}"):
             st.query_params.update({"user": usuario_id})
             st.rerun()
-        
-        st.markdown("---")
-    
+
+    st.markdown("---")
+
     st.markdown("""
     ### 📝 Instruções:
     1. **Copie o link** do usuário desejado
     2. **Cole em uma nova aba** do navegador
     3. **Acesse diretamente** - o sistema abrirá pronto para uso
-    
+
     ### 🔧 URL Base Atual:
     Se os links não funcionarem, verifique se a URL base está correta.
     """)
