@@ -85,27 +85,29 @@ def get_usuario_from_url():
     try:
         query_params = st.query_params
         
-        # Debug: mostra todos os parâmetros recebidos
-        st.sidebar.write("🔍 Debug - Parâmetros da URL:", dict(query_params))
+        # Removendo todas as mensagens de debug
+        # st.sidebar.write("🔍 Debug - Parâmetros da URL:", dict(query_params))
         
         usuario_id = query_params.get("user", "")
         if usuario_id:
             usuario_id = usuario_id.lower().strip()
-            st.sidebar.write(f"🔍 Debug - User ID encontrado: '{usuario_id}'")
+            # st.sidebar.write(f"🔍 Debug - User ID encontrado: '{usuario_id}'")
             
             if usuario_id in USUARIOS_CONFIG:
-                st.sidebar.write(f"✅ Debug - Usuário válido encontrado!")
+                # st.sidebar.write(f"✅ Debug - Usuário válido encontrado!")
                 return usuario_id, USUARIOS_CONFIG[usuario_id]
             else:
-                st.sidebar.write(f"❌ Debug - Usuário '{usuario_id}' não encontrado na configuração")
-                st.sidebar.write(f"🔍 Debug - Usuários disponíveis: {list(USUARIOS_CONFIG.keys())}")
+                # st.sidebar.write(f"❌ Debug - Usuário '{usuario_id}' não encontrado na configuração")
+                # st.sidebar.write(f"🔍 Debug - Usuários disponíveis: {list(USUARIOS_CONFIG.keys())}")
+                pass
         else:
-            st.sidebar.write("❌ Debug - Nenhum parâmetro 'user' encontrado na URL")
-        
+            # st.sidebar.write("❌ Debug - Nenhum parâmetro 'user' encontrado na URL")
+            pass
+            
         return None, None
         
     except Exception as e:
-        st.sidebar.error(f"❌ Erro ao processar URL: {e}")
+        # st.sidebar.error(f"❌ Erro ao processar URL: {e}")
         return None, None
 
 # ================================
