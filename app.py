@@ -56,6 +56,7 @@ PASTAS_EMPRESA = {
 USUARIOS_CONFIG = {
     "joao": {
         "nome": "Mariana - Facilities",
+        "empresa": "Moon Ventures",
         "email": "Facilities@moonventures.com"
     },
     "maria": {
@@ -70,6 +71,7 @@ USUARIOS_CONFIG = {
     },
     "ana": {
         "nome": "Pedro Linhares - Logística",
+        "empresa": "Moon Ventures",
         "email": "logistica@moonventures.com"
     }
     # Adicione mais usuários conforme necessário
