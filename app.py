@@ -54,22 +54,22 @@ PASTAS_EMPRESA = {
 # 4. Configuração de Usuários
 # ================================
 USUARIOS_CONFIG = {
-    "Mariana": {
+    "mariana": {
         "nome": "Mariana - Facilities",
         "empresa": "Moon Ventures",
         "email": "Facilities@moonventures.com"
     },
-    "Joao": {
+    "joao": {
         "nome": "João Vicente - Marketing",
         "empresa": "Minimal Club", 
         "email": "marketing@minimalclub.com"
     },
-    "Guilherme": {
+    "guilherme": {
         "nome": "Guilherme Pettenati - Hoomy",
         "empresa": "Hoomy",
         "email": "Pettenatti@hoomy.com"
     },
-    "Linhares": {
+    "linhares": {
         "nome": "Pedro Linhares - Logística",
         "empresa": "Moon Ventures",
         "email": "logistica@moonventures.com"
