@@ -224,16 +224,6 @@ def gerar_links_usuarios():
 
     st.markdown("---")
 
-    st.markdown("""
-    ### 📝 Instruções:
-    1. **Copie o link** do usuário desejado
-    2. **Cole em uma nova aba** do navegador
-    3. **Acesse diretamente** - o sistema abrirá pronto para uso
-
-    ### 🔧 URL Base Atual:
-    Se os links não funcionarem, verifique se a URL base está correta.
-    """)
-    st.code(base_url)
 
 # ================================
 # 10. App Principal
@@ -551,7 +541,15 @@ st.sidebar.markdown(f"**Nome:** {usuario_info['nome']}")
 st.sidebar.markdown(f"**Empresa:** {usuario_info['empresa']}")
 st.sidebar.markdown(f"**Email:** {usuario_info['email']}")
 
-# Botão para gerar novos links (apenas para admins)
-if st.sidebar.button("🔗 Ver Links de Usuários"):
+# Botão para gerar links - apenas para admins (determine quem são os admins)
+admin_usuarios = ["joao"]  # Defina aqui quais usuários são administradores
+is_admin = usuario_id in admin_usuarios
+
+if is_admin and st.sidebar.button("🔗 Ver Links de Todos Usuários"):
     with st.sidebar:
-        gerar_links_usuarios()
+        gerar_links_usuarios(mostrar_todos=True)
+else:
+    # Botão para ver apenas o próprio link
+    if st.sidebar.button("🔗 Ver Meu Link de Acesso"):
+        with st.sidebar:
+            gerar_links_usuarios(mostrar_todos=False, usuario_atual=usuario_id)
