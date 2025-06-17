@@ -82,12 +82,30 @@ USUARIOS_CONFIG = {
 # ================================
 def get_usuario_from_url():
     """Obtém o usuário dos parâmetros da URL"""
-    query_params = st.query_params
-    usuario_id = query_params.get("user", "").lower()
-    
-    if usuario_id in USUARIOS_CONFIG:
-        return usuario_id, USUARIOS_CONFIG[usuario_id]
-    else:
+    try:
+        query_params = st.query_params
+        
+        # Debug: mostra todos os parâmetros recebidos
+        st.sidebar.write("🔍 Debug - Parâmetros da URL:", dict(query_params))
+        
+        usuario_id = query_params.get("user", "")
+        if usuario_id:
+            usuario_id = usuario_id.lower().strip()
+            st.sidebar.write(f"🔍 Debug - User ID encontrado: '{usuario_id}'")
+            
+            if usuario_id in USUARIOS_CONFIG:
+                st.sidebar.write(f"✅ Debug - Usuário válido encontrado!")
+                return usuario_id, USUARIOS_CONFIG[usuario_id]
+            else:
+                st.sidebar.write(f"❌ Debug - Usuário '{usuario_id}' não encontrado na configuração")
+                st.sidebar.write(f"🔍 Debug - Usuários disponíveis: {list(USUARIOS_CONFIG.keys())}")
+        else:
+            st.sidebar.write("❌ Debug - Nenhum parâmetro 'user' encontrado na URL")
+        
+        return None, None
+        
+    except Exception as e:
+        st.sidebar.error(f"❌ Erro ao processar URL: {e}")
         return None, None
 
 # ================================
@@ -188,7 +206,18 @@ def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
 # ================================
 def gerar_links_usuarios():
     """Gera links personalizados para cada usuário"""
-    base_url = "https://your-streamlit-app.streamlit.app"  # Substitua pela URL real do seu app
+    # Tenta detectar a URL atual automaticamente
+    try:
+        # No Streamlit Cloud, geralmente pode ser detectada assim
+        base_url = "https://your-streamlit-app.streamlit.app"  # Substitua pela URL real
+        
+        # Você pode também tentar detectar automaticamente (funciona em alguns casos)
+        # import streamlit.web.bootstrap as bootstrap
+        # session_info = bootstrap._get_session_info()
+        # base_url = session_info.get('base_url_path', 'http://localhost:8501')
+        
+    except:
+        base_url = "http://localhost:8501"  # Fallback para desenvolvimento local
     
     st.subheader("🔗 Links Personalizados dos Usuários")
     st.info("Compartilhe estes links com cada usuário para acesso direto:")
@@ -197,7 +226,24 @@ def gerar_links_usuarios():
         link = f"{base_url}?user={usuario_id}"
         st.markdown(f"**{info['nome']}** ({info['empresa']})")
         st.code(link)
+        
+        # Botão para testar o link diretamente
+        if st.button(f"🧪 Testar link do {info['nome']}", key=f"test_{usuario_id}"):
+            st.query_params.update({"user": usuario_id})
+            st.rerun()
+        
         st.markdown("---")
+    
+    st.markdown("""
+    ### 📝 Instruções:
+    1. **Copie o link** do usuário desejado
+    2. **Cole em uma nova aba** do navegador
+    3. **Acesse diretamente** - o sistema abrirá pronto para uso
+    
+    ### 🔧 URL Base Atual:
+    Se os links não funcionarem, verifique se a URL base está correta.
+    """)
+    st.code(base_url)
 
 # ================================
 # 10. App Principal
@@ -209,28 +255,43 @@ usuario_id, usuario_info = get_usuario_from_url()
 # Se não há usuário válido na URL, mostra página de configuração
 if not usuario_info:
     st.title("🔧 Configuração do Sistema")
-    st.warning("⚠️ Nenhum usuário válido identificado na URL.")
+    st.error("⚠️ Nenhum usuário válido identificado na URL.")
+    
+    # Mostra informações de debug
+    current_url = st.query_params
+    st.info(f"🔍 URL atual detectada: {dict(current_url)}")
     
     st.markdown("""
-    ### Como usar o sistema:
+    ### ❗ Problema Detectado:
+    Para usar o sistema, você precisa acessar através de um link personalizado.
+    
+    ### 📋 Como usar o sistema:
     1. Cada usuário deve ter seu próprio link personalizado
     2. Os links direcionam automaticamente para a aba correta na planilha
-    3. Use os links abaixo para acessar o sistema:
+    3. **Use os links abaixo para acessar o sistema:**
     """)
     
     gerar_links_usuarios()
     
     st.markdown("""
-    ### Para adicionar novos usuários:
+    ### 🔧 Para adicionar novos usuários:
     Edite a configuração `USUARIOS_CONFIG` no código, adicionando:
     ```python
     "id_usuario": {
         "nome": "Nome Completo",
-        "empresa": "Nome da Empresa",
+        "empresa": "Nome da Empresa", 
         "email": "email@empresa.com"
     }
     ```
+    
+    ### 🧪 Teste Rápido:
+    Tente acessar a URL atual adicionando `?user=joao` no final.
     """)
+    
+    # Botão de teste
+    if st.button("🧪 Testar com usuário João"):
+        st.query_params.update({"user": "joao"})
+        st.rerun()
     
     st.stop()
 
