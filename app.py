@@ -157,7 +157,6 @@ if menu == "Inserir Compra":
         if campo not in st.session_state:
             st.session_state[campo] = valor_inicial
 
-    cartao = st.selectbox("💳 Nome do cartão", cartoes)
     fornecedor = st.text_input("📦 Nome do Fornecedor", key="fornecedor")
     valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80", key="valor_str")
 
