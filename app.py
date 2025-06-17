@@ -313,7 +313,7 @@ menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar C
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
     
-    # Permitir seleção de empresa apenas para João e Ana
+    # Permitir seleção de empresa apenas para Mariana e Linhares
     empresa_selecionada = usuario_info['empresa']  # Valor padrão
     
     # Verificar se o usuário é Mariana ou Linhares
