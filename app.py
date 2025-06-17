@@ -42,7 +42,7 @@ SHEET_ID = "1CcrV5Gs3LwrLXgjLBgk2M02SAnDVJGuHhqY_pi56Mnw"
 spreadsheet = gc.open_by_key(SHEET_ID)
 
 # ================================
-# 3. IDs das pastas fixas no Google Drive
+# 3. IDs das pastas fixas no Google Drive (por empresa)
 # ================================
 PASTAS_EMPRESA = {
     "Moon Ventures": "1pVdro4IFN08GEUSaCYDOwvS5dTCNAl41",
@@ -51,49 +51,77 @@ PASTAS_EMPRESA = {
 }
 
 # ================================
-# 4. Lista das empresas
+# 4. Configuração de Usuários
 # ================================
-empresas = [
-    "Minimal Club",
-    "Hoomy", 
-    "Moon Ventures"
-]
+USUARIOS_CONFIG = {
+    "joao": {
+        "nome": "João Silva",
+        "empresa": "Moon Ventures",
+        "email": "joao@moonventures.com"
+    },
+    "maria": {
+        "nome": "Maria Santos",
+        "empresa": "Minimal Club", 
+        "email": "maria@minimalclub.com"
+    },
+    "pedro": {
+        "nome": "Pedro Costa",
+        "empresa": "Hoomy",
+        "email": "pedro@hoomy.com"
+    },
+    "ana": {
+        "nome": "Ana Oliveira",
+        "empresa": "Moon Ventures",
+        "email": "ana@moonventures.com"
+    }
+    # Adicione mais usuários conforme necessário
+}
 
 # ================================
-# 5. Função para obter a aba da empresa
+# 5. Função para obter usuário da URL
 # ================================
-def get_worksheet_by_empresa(empresa):
+def get_usuario_from_url():
+    """Obtém o usuário dos parâmetros da URL"""
+    query_params = st.query_params
+    usuario_id = query_params.get("user", "").lower()
+    
+    if usuario_id in USUARIOS_CONFIG:
+        return usuario_id, USUARIOS_CONFIG[usuario_id]
+    else:
+        return None, None
+
+# ================================
+# 6. Função para obter a aba do usuário
+# ================================
+def get_worksheet_by_usuario(usuario_info):
+    """Cria ou obtém a aba específica do usuário"""
+    nome_aba = usuario_info["nome"]
     try:
-        # Primeiro tenta encontrar a aba pelo nome exato
-        return spreadsheet.worksheet(empresa)
+        # Primeiro tenta encontrar a aba pelo nome do usuário
+        return spreadsheet.worksheet(nome_aba)
     except gspread.exceptions.WorksheetNotFound:
         try:
-            # Se não encontrar, lista todas as abas para verificar se existe algo similar
-            worksheets = spreadsheet.worksheets()
-            worksheet_names = [ws.title for ws in worksheets]
-            st.info(f"Abas disponíveis: {worksheet_names}")
+            # Se não encontrar, cria uma nova aba para o usuário
+            st.info(f"Criando nova aba para {nome_aba}...")
+            worksheet = spreadsheet.add_worksheet(title=nome_aba, rows="1000", cols="20")
             
-            # Tenta encontrar uma aba com nome similar (ignorando case)
-            for ws in worksheets:
-                if ws.title.lower() == empresa.lower():
-                    return ws
+            # Adiciona cabeçalhos na nova aba
+            headers = ["Data", "Empresa", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
+            worksheet.append_row(headers)
             
-            # Se chegou até aqui, a aba realmente não existe
-            # Vamos usar a primeira aba (Sheet1) e adicionar os dados lá
-            # com identificação da empresa
-            st.warning(f"Aba '{empresa}' não encontrada. Usando a primeira aba disponível.")
-            return worksheets[0]
+            st.success(f"Aba '{nome_aba}' criada com sucesso!")
+            return worksheet
             
         except Exception as e:
-            st.error(f"Erro ao acessar as abas da planilha: {e}")
+            st.error(f"Erro ao criar aba para {nome_aba}: {e}")
             # Como último recurso, usa a primeira aba
             return spreadsheet.sheet1
     except Exception as e:
-        st.error(f"Erro inesperado ao acessar a aba '{empresa}': {e}")
+        st.error(f"Erro inesperado ao acessar a aba '{nome_aba}': {e}")
         return spreadsheet.sheet1
 
 # ================================
-# 6. Função para upload no Google Drive
+# 7. Função para upload no Google Drive
 # ================================
 def upload_to_drive(file, empresa):
     folder_id = PASTAS_EMPRESA.get(empresa)
@@ -123,7 +151,7 @@ def upload_to_drive(file, empresa):
         st.stop()
 
 # ================================
-# 7. Envio de Email com Anexo
+# 8. Envio de Email com Anexo
 # ================================
 def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
     config = st.secrets["email"]
@@ -156,19 +184,73 @@ def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
         st.warning(f"❌ Email não enviado: {e}")
 
 # ================================
-# 8. App Principal
+# 9. Função para gerar links personalizados
 # ================================
+def gerar_links_usuarios():
+    """Gera links personalizados para cada usuário"""
+    base_url = "https://your-streamlit-app.streamlit.app"  # Substitua pela URL real do seu app
+    
+    st.subheader("🔗 Links Personalizados dos Usuários")
+    st.info("Compartilhe estes links com cada usuário para acesso direto:")
+    
+    for usuario_id, info in USUARIOS_CONFIG.items():
+        link = f"{base_url}?user={usuario_id}"
+        st.markdown(f"**{info['nome']}** ({info['empresa']})")
+        st.code(link)
+        st.markdown("---")
+
+# ================================
+# 10. App Principal
+# ================================
+
+# Verifica se há parâmetro de usuário na URL
+usuario_id, usuario_info = get_usuario_from_url()
+
+# Se não há usuário válido na URL, mostra página de configuração
+if not usuario_info:
+    st.title("🔧 Configuração do Sistema")
+    st.warning("⚠️ Nenhum usuário válido identificado na URL.")
+    
+    st.markdown("""
+    ### Como usar o sistema:
+    1. Cada usuário deve ter seu próprio link personalizado
+    2. Os links direcionam automaticamente para a aba correta na planilha
+    3. Use os links abaixo para acessar o sistema:
+    """)
+    
+    gerar_links_usuarios()
+    
+    st.markdown("""
+    ### Para adicionar novos usuários:
+    Edite a configuração `USUARIOS_CONFIG` no código, adicionando:
+    ```python
+    "id_usuario": {
+        "nome": "Nome Completo",
+        "empresa": "Nome da Empresa",
+        "email": "email@empresa.com"
+    }
+    ```
+    """)
+    
+    st.stop()
+
+# ================================
+# Interface Principal (usuário válido)
+# ================================
+
 data_file = "data/compras.xlsx"
 os.makedirs("data", exist_ok=True)
-colunas_corretas = ["Data", "Empresa", "4 Últimos Dígitos", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
+colunas_corretas = ["Data", "Empresa", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
 if not os.path.exists(data_file):
     pd.DataFrame(columns=colunas_corretas).to_excel(data_file, index=False)
 
+# Limpa session state se for nova compra
 if "new" in st.query_params:
     for chave in list(st.session_state.keys()):
         if chave not in ["google_service_account", "email"]:
             del st.session_state[chave]
-    st.query_params.clear()
+    if "new" in st.query_params:
+        del st.query_params["new"]
 
 st.markdown("""
 <style>
@@ -179,19 +261,20 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Cabeçalho personalizado
 st.title("💳 Gestor de Compras Corporativas")
+st.markdown(f"**👤 Usuário:** {usuario_info['nome']} | **🏢 Empresa:** {usuario_info['empresa']}")
+
 menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar Compras"])
 
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
 
     campos = {
-        "ultimos_digitos": "",
         "fornecedor": "",
         "valor_str": "",
         "parcelado": "Não",
         "parcelas": 1,
-        "comprador": "",
         "descricao": "",
         "email_opcional": ""
     }
@@ -200,8 +283,7 @@ if menu == "Inserir Compra":
         if campo not in st.session_state:
             st.session_state[campo] = valor_inicial
 
-    empresa = st.selectbox("🏢 Empresa", empresas)
-    ultimos_digitos = st.text_input("💳 4 Últimos Dígitos do Cartão", max_chars=4, placeholder="Ex: 1234", key="ultimos_digitos")
+    # Campos do formulário (empresa e comprador são preenchidos automaticamente)
     data_compra = st.date_input("📅 Data da Compra", value=date.today())
     fornecedor = st.text_input("📦 Nome do Fornecedor", key="fornecedor")
     valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80", key="valor_str")
@@ -224,45 +306,41 @@ if menu == "Inserir Compra":
     valor_parcela = valor / parcelas if parcelas > 0 else 0.0
     st.markdown(f"💵 **Valor de cada parcela:** R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
-    comprador = st.text_input("👤 Nome do Comprador", key="comprador")
-    email_opcional = st.text_input("📧 E-mail (opcional)", key="email_opcional")
+    email_opcional = st.text_input("📧 E-mail (opcional)", value=usuario_info['email'], key="email_opcional")
     descricao = st.text_area("📝 Descrição da Compra", key="descricao")
     comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
 
     if st.button("✅ Salvar Compra"):
         erros = []
-        if not empresa: erros.append("Empresa não selecionada.")
-        if len(ultimos_digitos) != 4 or not ultimos_digitos.isdigit(): erros.append("4 últimos dígitos do cartão devem conter exatamente 4 números.")
         if not fornecedor: erros.append("Fornecedor não informado.")
         if valor <= 0: erros.append("Valor deve ser maior que zero.")
-        if not comprador: erros.append("Nome do comprador não informado.")
         if not descricao: erros.append("Descrição da compra não informada.")
         if not comprovante: erros.append("Comprovante não anexado.")
 
         if erros:
             st.error("\n".join(["❌ " + erro for erro in erros]))
         else:
-            link_drive, path_comprovante = upload_to_drive(comprovante, empresa)
+            # Upload do comprovante
+            link_drive, path_comprovante = upload_to_drive(comprovante, usuario_info['empresa'])
             
-            # Obter a aba específica da empresa
-            worksheet = get_worksheet_by_empresa(empresa)
+            # Obter a aba específica do usuário
+            worksheet = get_worksheet_by_usuario(usuario_info)
             
-            # Verificar se é a primeira linha (cabeçalho) e adicionar se necessário
+            # Verificar se cabeçalhos existem
             try:
                 headers_existentes = worksheet.row_values(1)
-                headers_esperados = ["Data", "Empresa", "4 Últimos Dígitos", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
+                headers_esperados = ["Data", "Empresa", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
                 
-                # Se não há cabeçalhos ou são diferentes, adiciona/atualiza
                 if not headers_existentes or headers_existentes != headers_esperados:
-                    if not headers_existentes:  # Se a planilha está vazia
+                    if not headers_existentes:
                         worksheet.append_row(headers_esperados)
-                    else:  # Se há dados mas cabeçalhos diferentes, adiciona uma linha em branco e depois os novos cabeçalhos
-                        worksheet.append_row([])  # linha em branco
+                    else:
+                        worksheet.append_row([])
                         worksheet.append_row(headers_esperados)
             except Exception as e:
                 st.warning(f"Aviso ao verificar cabeçalhos: {e}")
-                # Continua mesmo se houver erro nos cabeçalhos
 
+            # Salvar no arquivo local
             df = pd.read_excel(data_file)
             if list(df.columns) != colunas_corretas:
                 df = df.reindex(columns=colunas_corretas)
@@ -272,14 +350,13 @@ if menu == "Inserir Compra":
                 parcela_atual = f"{i+1}/{parcelas}" if parcelas > 1 else "1/1"
                 linha = [
                     datetime.today().strftime('%Y-%m-%d'), 
-                    empresa, 
-                    ultimos_digitos, 
+                    usuario_info['empresa'], 
                     fornecedor, 
                     valor, 
                     parcelado, 
                     parcelas, 
                     valor_parcela, 
-                    comprador, 
+                    usuario_info['nome'], 
                     parcela_atual, 
                     descricao, 
                     link_drive,
@@ -290,21 +367,21 @@ if menu == "Inserir Compra":
             df = pd.concat([df, pd.DataFrame(novas_linhas, columns=colunas_corretas)], ignore_index=True)
             df.to_excel(data_file, index=False)
             
-            # Adicionar na aba específica da empresa
+            # Adicionar na aba específica do usuário
             for linha in novas_linhas:
                 worksheet.append_row(linha)
 
+            # Enviar email se solicitado
             if email_opcional:
                 dados_email = {
                     "Data": datetime.today().strftime('%Y-%m-%d'),
-                    "Empresa": empresa,
-                    "4 Últimos Dígitos": ultimos_digitos,
+                    "Empresa": usuario_info['empresa'],
                     "Fornecedor": fornecedor,
                     "Valor Total": valor_formatado,
                     "Parcelado": parcelado,
                     "Parcelas": parcelas,
                     "Valor da Parcela": f"R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
-                    "Comprador": comprador,
+                    "Comprador": usuario_info['nome'],
                     "Descrição": descricao,
                     "Data da Compra": data_compra.strftime('%d/%m/%Y')
                 }
@@ -321,103 +398,109 @@ if menu == "Inserir Compra":
             st.rerun()
 
 elif menu == "Visualizar Compras":
-    st.subheader("📊 Visualização de Compras Registradas")
-    
-    # Primeiro, vamos ver quais abas estão disponíveis
-    try:
-        worksheets = spreadsheet.worksheets()
-        abas_disponiveis = [ws.title for ws in worksheets]
-        st.info(f"Abas disponíveis na planilha: {', '.join(abas_disponiveis)}")
-        
-        # Permite selecionar entre as empresas ou as abas disponíveis
-        opcoes_visualizacao = empresas + [aba for aba in abas_disponiveis if aba not in empresas]
-        empresa_selecionada = st.selectbox("🏢 Selecione a Empresa/Aba", opcoes_visualizacao)
-        
-    except Exception as e:
-        st.error(f"Erro ao listar abas: {e}")
-        empresa_selecionada = st.selectbox("🏢 Selecione a Empresa", empresas)
+    st.subheader(f"📊 Compras de {usuario_info['nome']}")
     
     try:
-        worksheet = get_worksheet_by_empresa(empresa_selecionada)
+        worksheet = get_worksheet_by_usuario(usuario_info)
         rows = worksheet.get_all_values()
         
-        if len(rows) > 0:  # Se há dados
-            headers = rows[0] if rows[0] else ["Data", "Empresa", "4 Últimos Dígitos", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
-            dados = rows[1:] if len(rows) > 1 else []
+        if len(rows) > 1:  # Se há dados além do cabeçalho
+            headers = rows[0]
+            dados = rows[1:]
             
-            if dados:  # Se há dados além do cabeçalho
-                # Garante que temos o número correto de colunas
-                dados_limpos = []
-                for linha in dados:
-                    if len(linha) < len(headers):
-                        linha.extend([''] * (len(headers) - len(linha)))
-                    dados_limpos.append(linha[:len(headers)])
-                
-                df = pd.DataFrame(dados_limpos, columns=headers)
+            # Garante que temos o número correto de colunas
+            dados_limpos = []
+            for linha in dados:
+                if len(linha) < len(headers):
+                    linha.extend([''] * (len(headers) - len(linha)))
+                dados_limpos.append(linha[:len(headers)])
+            
+            df = pd.DataFrame(dados_limpos, columns=headers)
 
-                def parse_valor(valor_str):
-                    try:
-                        return float(str(valor_str).replace("R$", "").replace(".", "").replace(",", "."))
-                    except:
-                        return 0.0
+            def parse_valor(valor_str):
+                try:
+                    return float(str(valor_str).replace("R$", "").replace(".", "").replace(",", "."))
+                except:
+                    return 0.0
 
-                if "Valor" in df.columns:
-                    df["Valor"] = df["Valor"].apply(parse_valor)
-                if "Valor Parcela" in df.columns:
-                    df["Valor Parcela"] = df["Valor Parcela"].apply(parse_valor)
+            if "Valor" in df.columns:
+                df["Valor"] = df["Valor"].apply(parse_valor)
+            if "Valor Parcela" in df.columns:
+                df["Valor Parcela"] = df["Valor Parcela"].apply(parse_valor)
 
-                col1, col2 = st.columns(2)
-                with col1:
-                    if "Comprador" in df.columns:
-                        filtro_comprador = st.selectbox("Filtrar por Comprador:", options=["Todos"] + sorted(df["Comprador"].dropna().unique().tolist()))
-                    else:
-                        filtro_comprador = "Todos"
-                with col2:
-                    if "4 Últimos Dígitos" in df.columns:
-                        filtro_digitos = st.selectbox("Filtrar por 4 Últimos Dígitos:", options=["Todos"] + sorted(df["4 Últimos Dígitos"].dropna().unique().tolist()))
-                    else:
-                        filtro_digitos = "Todos"
-
-                if filtro_comprador != "Todos" and "Comprador" in df.columns:
-                    df = df[df["Comprador"] == filtro_comprador]
-                if filtro_digitos != "Todos" and "4 Últimos Dígitos" in df.columns:
-                    df = df[df["4 Últimos Dígitos"] == filtro_digitos]
-
-                df_exibicao = df.copy()
-                if "Valor" in df_exibicao.columns:
-                    df_exibicao["Valor"] = df_exibicao["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
-                if "Valor Parcela" in df_exibicao.columns:
-                    df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
-
-                st.dataframe(df_exibicao, use_container_width=True)
-
-                st.markdown("---")
-                st.markdown("### 💳 Gastos por Cartão (4 últimos dígitos)")
-                if not df.empty and "Valor" in df.columns and "4 Últimos Dígitos" in df.columns:
-                    colunas_duplicacao = ["Data", "4 Últimos Dígitos", "Fornecedor", "Valor", "Comprador"]
-                    colunas_existentes = [col for col in colunas_duplicacao if col in df.columns]
-                    
-                    if colunas_existentes:
-                        df_grafico = df.drop_duplicates(subset=colunas_existentes)
-                        grafico = df_grafico.groupby("4 Últimos Dígitos")["Valor"].sum().reset_index()
-                        grafico["Total Formatado"] = grafico["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-
-                        st.dataframe(grafico[["4 Últimos Dígitos", "Total Formatado"]], use_container_width=True)
-                        st.bar_chart(data=grafico, x="4 Últimos Dígitos", y="Valor")
-                    else:
-                        st.info("Colunas necessárias para o gráfico não encontradas.")
+            # Filtros
+            col1, col2 = st.columns(2)
+            with col1:
+                if "Fornecedor" in df.columns:
+                    filtro_fornecedor = st.selectbox("Filtrar por Fornecedor:", options=["Todos"] + sorted(df["Fornecedor"].dropna().unique().tolist()))
                 else:
-                    st.info("Nenhum dado para exibir o gráfico.")
-            else:
-                st.info(f"Nenhuma compra registrada para {empresa_selecionada}.")
+                    filtro_fornecedor = "Todos"
+            with col2:
+                if "Data da Compra" in df.columns:
+                    datas_unicas = sorted(df["Data da Compra"].dropna().unique().tolist(), reverse=True)
+                    filtro_data = st.selectbox("Filtrar por Data:", options=["Todas"] + datas_unicas)
+                else:
+                    filtro_data = "Todas"
+
+            # Aplicar filtros
+            if filtro_fornecedor != "Todos" and "Fornecedor" in df.columns:
+                df = df[df["Fornecedor"] == filtro_fornecedor]
+            if filtro_data != "Todas" and "Data da Compra" in df.columns:
+                df = df[df["Data da Compra"] == filtro_data]
+
+            # Formatar valores para exibição
+            df_exibicao = df.copy()
+            if "Valor" in df_exibicao.columns:
+                df_exibicao["Valor"] = df_exibicao["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
+            if "Valor Parcela" in df_exibicao.columns:
+                df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
+
+            st.dataframe(df_exibicao, use_container_width=True)
+
+            # Resumo financeiro
+            if not df.empty and "Valor" in df.columns:
+                st.markdown("---")
+                st.markdown("### 💰 Resumo Financeiro")
+                
+                # Remove duplicatas para não contar parcelas múltiplas vezes
+                colunas_para_remover_duplicatas = ["Data", "Fornecedor", "Valor", "Comprador"]
+                colunas_existentes = [col for col in colunas_para_remover_duplicatas if col in df.columns]
+                
+                if colunas_existentes:
+                    df_unico = df.drop_duplicates(subset=colunas_existentes)
+                    total_gasto = df_unico["Valor"].sum()
+                    
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Total Gasto", f"R$ {total_gasto:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                    with col2:
+                        st.metric("Número de Compras", len(df_unico))
+                    with col3:
+                        valor_medio = total_gasto / len(df_unico) if len(df_unico) > 0 else 0
+                        st.metric("Valor Médio", f"R$ {valor_medio:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                
+                # Gráfico de gastos por fornecedor
+                if "Fornecedor" in df.columns:
+                    st.markdown("### 📊 Gastos por Fornecedor")
+                    grafico_fornecedor = df_unico.groupby("Fornecedor")["Valor"].sum().reset_index()
+                    grafico_fornecedor = grafico_fornecedor.sort_values("Valor", ascending=False)
+                    
+                    st.bar_chart(data=grafico_fornecedor, x="Fornecedor", y="Valor")
+                
         else:
-            st.info(f"A aba {empresa_selecionada} está vazia.")
+            st.info(f"Nenhuma compra registrada ainda para {usuario_info['nome']}.")
             
     except Exception as e:
-        st.error(f"Erro ao carregar dados de {empresa_selecionada}: {e}")
-        st.info("Tentando usar a primeira aba disponível...")
-        try:
-            worksheet = spreadsheet.sheet1
-            st.info("Usando a primeira aba da planilha.")
-        except Exception as e2:
-            st.error(f"Não foi possível acessar nenhuma aba: {e2}")
+        st.error(f"Erro ao carregar suas compras: {e}")
+
+# Rodapé com informações do usuário
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 👤 Informações do Usuário")
+st.sidebar.markdown(f"**Nome:** {usuario_info['nome']}")
+st.sidebar.markdown(f"**Empresa:** {usuario_info['empresa']}")
+st.sidebar.markdown(f"**Email:** {usuario_info['email']}")
+
+# Botão para gerar novos links (apenas para admins)
+if st.sidebar.button("🔗 Ver Links de Usuários"):
+    with st.sidebar:
+        gerar_links_usuarios()
