@@ -64,14 +64,33 @@ empresas = [
 # ================================
 def get_worksheet_by_empresa(empresa):
     try:
+        # Primeiro tenta encontrar a aba pelo nome exato
         return spreadsheet.worksheet(empresa)
-    except:
-        # Se a aba não existir, cria uma nova
-        worksheet = spreadsheet.add_worksheet(title=empresa, rows="1000", cols="20")
-        # Adiciona os cabeçalhos
-        headers = ["Data", "Empresa", "4 Últimos Dígitos", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
-        worksheet.append_row(headers)
-        return worksheet
+    except gspread.exceptions.WorksheetNotFound:
+        try:
+            # Se não encontrar, lista todas as abas para verificar se existe algo similar
+            worksheets = spreadsheet.worksheets()
+            worksheet_names = [ws.title for ws in worksheets]
+            st.info(f"Abas disponíveis: {worksheet_names}")
+            
+            # Tenta encontrar uma aba com nome similar (ignorando case)
+            for ws in worksheets:
+                if ws.title.lower() == empresa.lower():
+                    return ws
+            
+            # Se chegou até aqui, a aba realmente não existe
+            # Vamos usar a primeira aba (Sheet1) e adicionar os dados lá
+            # com identificação da empresa
+            st.warning(f"Aba '{empresa}' não encontrada. Usando a primeira aba disponível.")
+            return worksheets[0]
+            
+        except Exception as e:
+            st.error(f"Erro ao acessar as abas da planilha: {e}")
+            # Como último recurso, usa a primeira aba
+            return spreadsheet.sheet1
+    except Exception as e:
+        st.error(f"Erro inesperado ao acessar a aba '{empresa}': {e}")
+        return spreadsheet.sheet1
 
 # ================================
 # 6. Função para upload no Google Drive
@@ -227,6 +246,22 @@ if menu == "Inserir Compra":
             
             # Obter a aba específica da empresa
             worksheet = get_worksheet_by_empresa(empresa)
+            
+            # Verificar se é a primeira linha (cabeçalho) e adicionar se necessário
+            try:
+                headers_existentes = worksheet.row_values(1)
+                headers_esperados = ["Data", "Empresa", "4 Últimos Dígitos", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
+                
+                # Se não há cabeçalhos ou são diferentes, adiciona/atualiza
+                if not headers_existentes or headers_existentes != headers_esperados:
+                    if not headers_existentes:  # Se a planilha está vazia
+                        worksheet.append_row(headers_esperados)
+                    else:  # Se há dados mas cabeçalhos diferentes, adiciona uma linha em branco e depois os novos cabeçalhos
+                        worksheet.append_row([])  # linha em branco
+                        worksheet.append_row(headers_esperados)
+            except Exception as e:
+                st.warning(f"Aviso ao verificar cabeçalhos: {e}")
+                # Continua mesmo se houver erro nos cabeçalhos
 
             df = pd.read_excel(data_file)
             if list(df.columns) != colunas_corretas:
@@ -288,57 +323,101 @@ if menu == "Inserir Compra":
 elif menu == "Visualizar Compras":
     st.subheader("📊 Visualização de Compras Registradas")
     
-    # Seleção da empresa para visualizar
-    empresa_selecionada = st.selectbox("🏢 Selecione a Empresa", empresas)
+    # Primeiro, vamos ver quais abas estão disponíveis
+    try:
+        worksheets = spreadsheet.worksheets()
+        abas_disponiveis = [ws.title for ws in worksheets]
+        st.info(f"Abas disponíveis na planilha: {', '.join(abas_disponiveis)}")
+        
+        # Permite selecionar entre as empresas ou as abas disponíveis
+        opcoes_visualizacao = empresas + [aba for aba in abas_disponiveis if aba not in empresas]
+        empresa_selecionada = st.selectbox("🏢 Selecione a Empresa/Aba", opcoes_visualizacao)
+        
+    except Exception as e:
+        st.error(f"Erro ao listar abas: {e}")
+        empresa_selecionada = st.selectbox("🏢 Selecione a Empresa", empresas)
     
     try:
         worksheet = get_worksheet_by_empresa(empresa_selecionada)
         rows = worksheet.get_all_values()
         
-        if len(rows) > 1:  # Se há dados além do cabeçalho
-            headers = rows[0]
-            dados = rows[1:]
-            df = pd.DataFrame(dados, columns=headers)
+        if len(rows) > 0:  # Se há dados
+            headers = rows[0] if rows[0] else ["Data", "Empresa", "4 Últimos Dígitos", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
+            dados = rows[1:] if len(rows) > 1 else []
+            
+            if dados:  # Se há dados além do cabeçalho
+                # Garante que temos o número correto de colunas
+                dados_limpos = []
+                for linha in dados:
+                    if len(linha) < len(headers):
+                        linha.extend([''] * (len(headers) - len(linha)))
+                    dados_limpos.append(linha[:len(headers)])
+                
+                df = pd.DataFrame(dados_limpos, columns=headers)
 
-            def parse_valor(valor_str):
-                try:
-                    return float(valor_str.replace("R$", "").replace(".", "").replace(",", "."))
-                except:
-                    return None
+                def parse_valor(valor_str):
+                    try:
+                        return float(str(valor_str).replace("R$", "").replace(".", "").replace(",", "."))
+                    except:
+                        return 0.0
 
-            df["Valor"] = df["Valor"].apply(parse_valor)
-            df["Valor Parcela"] = df["Valor Parcela"].apply(parse_valor)
+                if "Valor" in df.columns:
+                    df["Valor"] = df["Valor"].apply(parse_valor)
+                if "Valor Parcela" in df.columns:
+                    df["Valor Parcela"] = df["Valor Parcela"].apply(parse_valor)
 
-            col1, col2 = st.columns(2)
-            with col1:
-                filtro_comprador = st.selectbox("Filtrar por Comprador:", options=["Todos"] + sorted(df["Comprador"].dropna().unique().tolist()))
-            with col2:
-                filtro_digitos = st.selectbox("Filtrar por 4 Últimos Dígitos:", options=["Todos"] + sorted(df["4 Últimos Dígitos"].dropna().unique().tolist()))
+                col1, col2 = st.columns(2)
+                with col1:
+                    if "Comprador" in df.columns:
+                        filtro_comprador = st.selectbox("Filtrar por Comprador:", options=["Todos"] + sorted(df["Comprador"].dropna().unique().tolist()))
+                    else:
+                        filtro_comprador = "Todos"
+                with col2:
+                    if "4 Últimos Dígitos" in df.columns:
+                        filtro_digitos = st.selectbox("Filtrar por 4 Últimos Dígitos:", options=["Todos"] + sorted(df["4 Últimos Dígitos"].dropna().unique().tolist()))
+                    else:
+                        filtro_digitos = "Todos"
 
-            if filtro_comprador != "Todos":
-                df = df[df["Comprador"] == filtro_comprador]
-            if filtro_digitos != "Todos":
-                df = df[df["4 Últimos Dígitos"] == filtro_digitos]
+                if filtro_comprador != "Todos" and "Comprador" in df.columns:
+                    df = df[df["Comprador"] == filtro_comprador]
+                if filtro_digitos != "Todos" and "4 Últimos Dígitos" in df.columns:
+                    df = df[df["4 Últimos Dígitos"] == filtro_digitos]
 
-            df_exibicao = df.copy()
-            df_exibicao["Valor"] = df_exibicao["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
-            df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
+                df_exibicao = df.copy()
+                if "Valor" in df_exibicao.columns:
+                    df_exibicao["Valor"] = df_exibicao["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
+                if "Valor Parcela" in df_exibicao.columns:
+                    df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
 
-            st.dataframe(df_exibicao, use_container_width=True)
+                st.dataframe(df_exibicao, use_container_width=True)
 
-            st.markdown("---")
-            st.markdown("### 💳 Gastos por Cartão (4 últimos dígitos)")
-            if not df.empty:
-                df_grafico = df.drop_duplicates(subset=["Data", "4 Últimos Dígitos", "Fornecedor", "Valor", "Comprador"])
-                grafico = df_grafico.groupby("4 Últimos Dígitos")["Valor"].sum().reset_index()
-                grafico["Total Formatado"] = grafico["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                st.markdown("---")
+                st.markdown("### 💳 Gastos por Cartão (4 últimos dígitos)")
+                if not df.empty and "Valor" in df.columns and "4 Últimos Dígitos" in df.columns:
+                    colunas_duplicacao = ["Data", "4 Últimos Dígitos", "Fornecedor", "Valor", "Comprador"]
+                    colunas_existentes = [col for col in colunas_duplicacao if col in df.columns]
+                    
+                    if colunas_existentes:
+                        df_grafico = df.drop_duplicates(subset=colunas_existentes)
+                        grafico = df_grafico.groupby("4 Últimos Dígitos")["Valor"].sum().reset_index()
+                        grafico["Total Formatado"] = grafico["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
-                st.dataframe(grafico[["4 Últimos Dígitos", "Total Formatado"]], use_container_width=True)
-                st.bar_chart(data=grafico, x="4 Últimos Dígitos", y="Valor")
+                        st.dataframe(grafico[["4 Últimos Dígitos", "Total Formatado"]], use_container_width=True)
+                        st.bar_chart(data=grafico, x="4 Últimos Dígitos", y="Valor")
+                    else:
+                        st.info("Colunas necessárias para o gráfico não encontradas.")
+                else:
+                    st.info("Nenhum dado para exibir o gráfico.")
             else:
-                st.info("Nenhum dado para exibir o gráfico.")
+                st.info(f"Nenhuma compra registrada para {empresa_selecionada}.")
         else:
-            st.info(f"Nenhuma compra registrada para a empresa {empresa_selecionada}.")
+            st.info(f"A aba {empresa_selecionada} está vazia.")
             
     except Exception as e:
-        st.error(f"Erro ao carregar dados da empresa {empresa_selecionada}: {e}")
+        st.error(f"Erro ao carregar dados de {empresa_selecionada}: {e}")
+        st.info("Tentando usar a primeira aba disponível...")
+        try:
+            worksheet = spreadsheet.sheet1
+            st.info("Usando a primeira aba da planilha.")
+        except Exception as e2:
+            st.error(f"Não foi possível acessar nenhuma aba: {e2}")
