@@ -6,7 +6,7 @@ st.set_page_config(page_title="Validador de Compras", layout="centered")
 # Agora sim pode seguir o resto
 import pandas as pd
 import os
-from datetime import datetime
+from datetime import datetime, date
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from pydrive.auth import GoogleAuth
@@ -39,7 +39,7 @@ drive = GoogleDrive(gauth)
 # 2. Google Sheets
 # ================================
 SHEET_ID = "1CcrV5Gs3LwrLXgjLBgk2M02SAnDVJGuHhqY_pi56Mnw"
-worksheet = gc.open_by_key(SHEET_ID).sheet1
+spreadsheet = gc.open_by_key(SHEET_ID)
 
 # ================================
 # 3. IDs das pastas fixas no Google Drive
@@ -51,7 +51,30 @@ PASTAS_EMPRESA = {
 }
 
 # ================================
-# 5. Função para upload no Google Drive
+# 4. Lista das empresas
+# ================================
+empresas = [
+    "Minimal Club",
+    "Hoomy", 
+    "Moon Ventures"
+]
+
+# ================================
+# 5. Função para obter a aba da empresa
+# ================================
+def get_worksheet_by_empresa(empresa):
+    try:
+        return spreadsheet.worksheet(empresa)
+    except:
+        # Se a aba não existir, cria uma nova
+        worksheet = spreadsheet.add_worksheet(title=empresa, rows="1000", cols="20")
+        # Adiciona os cabeçalhos
+        headers = ["Data", "Empresa", "4 Últimos Dígitos", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
+        worksheet.append_row(headers)
+        return worksheet
+
+# ================================
+# 6. Função para upload no Google Drive
 # ================================
 def upload_to_drive(file, empresa):
     folder_id = PASTAS_EMPRESA.get(empresa)
@@ -81,7 +104,7 @@ def upload_to_drive(file, empresa):
         st.stop()
 
 # ================================
-# 6. Envio de Email com Anexo
+# 7. Envio de Email com Anexo
 # ================================
 def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
     config = st.secrets["email"]
@@ -114,11 +137,11 @@ def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
         st.warning(f"❌ Email não enviado: {e}")
 
 # ================================
-# 7. App Principal
+# 8. App Principal
 # ================================
 data_file = "data/compras.xlsx"
 os.makedirs("data", exist_ok=True)
-colunas_corretas = ["Data", "Cartão", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante"]
+colunas_corretas = ["Data", "Empresa", "4 Últimos Dígitos", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
 if not os.path.exists(data_file):
     pd.DataFrame(columns=colunas_corretas).to_excel(data_file, index=False)
 
@@ -144,6 +167,7 @@ if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
 
     campos = {
+        "ultimos_digitos": "",
         "fornecedor": "",
         "valor_str": "",
         "parcelado": "Não",
@@ -157,6 +181,9 @@ if menu == "Inserir Compra":
         if campo not in st.session_state:
             st.session_state[campo] = valor_inicial
 
+    empresa = st.selectbox("🏢 Empresa", empresas)
+    ultimos_digitos = st.text_input("💳 4 Últimos Dígitos do Cartão", max_chars=4, placeholder="Ex: 1234", key="ultimos_digitos")
+    data_compra = st.date_input("📅 Data da Compra", value=date.today())
     fornecedor = st.text_input("📦 Nome do Fornecedor", key="fornecedor")
     valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80", key="valor_str")
 
@@ -185,6 +212,8 @@ if menu == "Inserir Compra":
 
     if st.button("✅ Salvar Compra"):
         erros = []
+        if not empresa: erros.append("Empresa não selecionada.")
+        if len(ultimos_digitos) != 4 or not ultimos_digitos.isdigit(): erros.append("4 últimos dígitos do cartão devem conter exatamente 4 números.")
         if not fornecedor: erros.append("Fornecedor não informado.")
         if valor <= 0: erros.append("Valor deve ser maior que zero.")
         if not comprador: erros.append("Nome do comprador não informado.")
@@ -195,6 +224,9 @@ if menu == "Inserir Compra":
             st.error("\n".join(["❌ " + erro for erro in erros]))
         else:
             link_drive, path_comprovante = upload_to_drive(comprovante, empresa)
+            
+            # Obter a aba específica da empresa
+            worksheet = get_worksheet_by_empresa(empresa)
 
             df = pd.read_excel(data_file)
             if list(df.columns) != colunas_corretas:
@@ -203,26 +235,43 @@ if menu == "Inserir Compra":
             novas_linhas = []
             for i in range(parcelas):
                 parcela_atual = f"{i+1}/{parcelas}" if parcelas > 1 else "1/1"
-                novas_linhas.append([
-                    datetime.today().strftime('%Y-%m-%d'), cartao, fornecedor, valor, parcelado, parcelas, valor_parcela, comprador, parcela_atual, descricao, link_drive
-                ])
+                linha = [
+                    datetime.today().strftime('%Y-%m-%d'), 
+                    empresa, 
+                    ultimos_digitos, 
+                    fornecedor, 
+                    valor, 
+                    parcelado, 
+                    parcelas, 
+                    valor_parcela, 
+                    comprador, 
+                    parcela_atual, 
+                    descricao, 
+                    link_drive,
+                    data_compra.strftime('%Y-%m-%d')
+                ]
+                novas_linhas.append(linha)
 
             df = pd.concat([df, pd.DataFrame(novas_linhas, columns=colunas_corretas)], ignore_index=True)
             df.to_excel(data_file, index=False)
+            
+            # Adicionar na aba específica da empresa
             for linha in novas_linhas:
                 worksheet.append_row(linha)
 
             if email_opcional:
                 dados_email = {
                     "Data": datetime.today().strftime('%Y-%m-%d'),
-                    "Cartão": cartao,
+                    "Empresa": empresa,
+                    "4 Últimos Dígitos": ultimos_digitos,
                     "Fornecedor": fornecedor,
                     "Valor Total": valor_formatado,
                     "Parcelado": parcelado,
                     "Parcelas": parcelas,
                     "Valor da Parcela": f"R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
                     "Comprador": comprador,
-                    "Descrição": descricao
+                    "Descrição": descricao,
+                    "Data da Compra": data_compra.strftime('%d/%m/%Y')
                 }
                 enviar_email(email_opcional, dados_email, anexo_path=path_comprovante, anexo_nome=comprovante.name)
 
@@ -238,50 +287,58 @@ if menu == "Inserir Compra":
 
 elif menu == "Visualizar Compras":
     st.subheader("📊 Visualização de Compras Registradas")
-    rows = worksheet.get_all_values()
-    headers = rows[0]
-    dados = rows[1:]
-    df = pd.DataFrame(dados, columns=headers)
+    
+    # Seleção da empresa para visualizar
+    empresa_selecionada = st.selectbox("🏢 Selecione a Empresa", empresas)
+    
+    try:
+        worksheet = get_worksheet_by_empresa(empresa_selecionada)
+        rows = worksheet.get_all_values()
+        
+        if len(rows) > 1:  # Se há dados além do cabeçalho
+            headers = rows[0]
+            dados = rows[1:]
+            df = pd.DataFrame(dados, columns=headers)
 
-    def parse_valor(valor_str):
-        try:
-            return float(valor_str.replace("R$", "").replace(".", "").replace(",", "."))
-        except:
-            return None
+            def parse_valor(valor_str):
+                try:
+                    return float(valor_str.replace("R$", "").replace(".", "").replace(",", "."))
+                except:
+                    return None
 
-    df["Valor"] = df["Valor"].apply(parse_valor)
-    df["Valor Parcela"] = df["Valor Parcela"].apply(parse_valor)
+            df["Valor"] = df["Valor"].apply(parse_valor)
+            df["Valor Parcela"] = df["Valor Parcela"].apply(parse_valor)
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        filtro_cartao = st.selectbox("Filtrar por Cartão:", options=["Todos"] + sorted(df["Cartão"].dropna().unique().tolist()))
-    with col2:
-        filtro_comprador = st.selectbox("Filtrar por Comprador:", options=["Todos"] + sorted(df["Comprador"].dropna().unique().tolist()))
-    with col3:
-        filtro_empresa = st.selectbox("Filtrar por Empresa:", options=["Todos", "Moon Ventures", "Minimal Club", "Hoomy"])
+            col1, col2 = st.columns(2)
+            with col1:
+                filtro_comprador = st.selectbox("Filtrar por Comprador:", options=["Todos"] + sorted(df["Comprador"].dropna().unique().tolist()))
+            with col2:
+                filtro_digitos = st.selectbox("Filtrar por 4 Últimos Dígitos:", options=["Todos"] + sorted(df["4 Últimos Dígitos"].dropna().unique().tolist()))
 
-    if filtro_cartao != "Todos":
-        df = df[df["Cartão"] == filtro_cartao]
-    if filtro_comprador != "Todos":
-        df = df[df["Comprador"] == filtro_comprador]
-    if filtro_empresa != "Todos":
-        cartoes_empresa = [k for k, v in mapa_empresas.items() if v == filtro_empresa]
-        df = df[df["Cartão"].isin(cartoes_empresa)]
+            if filtro_comprador != "Todos":
+                df = df[df["Comprador"] == filtro_comprador]
+            if filtro_digitos != "Todos":
+                df = df[df["4 Últimos Dígitos"] == filtro_digitos]
 
-    df_exibicao = df.copy()
-    df_exibicao["Valor"] = df_exibicao["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
-    df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
+            df_exibicao = df.copy()
+            df_exibicao["Valor"] = df_exibicao["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
+            df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
 
-    st.dataframe(df_exibicao, use_container_width=True)
+            st.dataframe(df_exibicao, use_container_width=True)
 
-    st.markdown("---")
-    st.markdown("### 💳 Gastos por Cartão")
-    if not df.empty:
-        df_grafico = df.drop_duplicates(subset=["Data", "Cartão", "Fornecedor", "Valor", "Comprador"])
-        grafico = df_grafico.groupby("Cartão")["Valor"].sum().reset_index()
-        grafico["Total Formatado"] = grafico["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+            st.markdown("---")
+            st.markdown("### 💳 Gastos por Cartão (4 últimos dígitos)")
+            if not df.empty:
+                df_grafico = df.drop_duplicates(subset=["Data", "4 Últimos Dígitos", "Fornecedor", "Valor", "Comprador"])
+                grafico = df_grafico.groupby("4 Últimos Dígitos")["Valor"].sum().reset_index()
+                grafico["Total Formatado"] = grafico["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
-        st.dataframe(grafico[["Cartão", "Total Formatado"]], use_container_width=True)
-        st.bar_chart(data=grafico, x="Cartão", y="Valor")
-    else:
-        st.info("Nenhum dado para exibir o gráfico.")
+                st.dataframe(grafico[["4 Últimos Dígitos", "Total Formatado"]], use_container_width=True)
+                st.bar_chart(data=grafico, x="4 Últimos Dígitos", y="Valor")
+            else:
+                st.info("Nenhum dado para exibir o gráfico.")
+        else:
+            st.info(f"Nenhuma compra registrada para a empresa {empresa_selecionada}.")
+            
+    except Exception as e:
+        st.error(f"Erro ao carregar dados da empresa {empresa_selecionada}: {e}")
