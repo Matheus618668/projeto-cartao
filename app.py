@@ -51,31 +51,6 @@ PASTAS_EMPRESA = {
 }
 
 # ================================
-# 4. Mapeamento fixo dos cartões e empresas
-# ================================
-cartoes = [
-    "Inter Moon Ventures",
-    "Inter Minimal",
-    "Inter Hoomy",
-    "Bradesco Minimal",
-    "Conta Simples Hoomy",
-    "Conta Simples Moon Ventures",
-    "Jeeves Moon Ventures"
-]
-
-mapa_empresas = {
-    "Inter Moon Ventures": "Moon Ventures",
-    "Bradesco Moon Ventures": "Moon Ventures",
-    "Conta Simples Moon Ventures": "Moon Ventures",
-    "Inter Minimal": "Minimal Club",
-    "Bradesco Minimal": "Minimal Club",
-    "Inter Hoomy": "Hoomy",
-    "Bradesco Hoomy": "Hoomy",
-    "Conta Simples Hoomy": "Hoomy",
-    "Jeeves Moon Ventures": "Moon Ventures"
-}
-
-# ================================
 # 5. Função para upload no Google Drive
 # ================================
 def upload_to_drive(file, empresa):
