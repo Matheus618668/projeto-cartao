@@ -312,7 +312,23 @@ menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar C
 
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
-
+    
+    # Permitir seleção de empresa apenas para João e Ana
+    empresa_selecionada = usuario_info['empresa']  # Valor padrão
+    
+    # Verificar se o usuário é João ou Ana
+    if usuario_info['nome'] in ["João Silva", "Ana Oliveira"]:
+        # Opções de empresas disponíveis
+        empresas_disponiveis = ["Moon Ventures", "Minimal Club", "Hoomy"]
+        empresa_selecionada = st.selectbox(
+            "🏢 Selecione a empresa para esta compra:",
+            options=empresas_disponiveis,
+            index=empresas_disponiveis.index(usuario_info['empresa']) if usuario_info['empresa'] in empresas_disponiveis else 0
+        )
+    else:
+        # Para outros usuários, mostrar apenas sua empresa fixa
+        st.markdown(f"🏢 **Empresa:** {usuario_info['empresa']}")
+    
     campos = {
         "fornecedor": "",
         "valor_str": "",
@@ -364,7 +380,7 @@ if menu == "Inserir Compra":
             st.error("\n".join(["❌ " + erro for erro in erros]))
         else:
             # Upload do comprovante
-            link_drive, path_comprovante = upload_to_drive(comprovante, usuario_info['empresa'])
+            link_drive, path_comprovante = upload_to_drive(comprovante, empresa_selecionada)
             
             # Obter a aba específica do usuário
             worksheet = get_worksheet_by_usuario(usuario_info)
@@ -392,8 +408,8 @@ if menu == "Inserir Compra":
             for i in range(parcelas):
                 parcela_atual = f"{i+1}/{parcelas}" if parcelas > 1 else "1/1"
                 linha = [
-                    datetime.today().strftime('%Y-%m-%d'), 
-                    usuario_info['empresa'], 
+                    datetime.today().strftime('%Y-%m-%d'),
+                    empresa_selecionada, #usar empresa selecionada
                     fornecedor, 
                     valor, 
                     parcelado, 
