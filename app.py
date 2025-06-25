@@ -61,7 +61,7 @@ USUARIOS_CONFIG = {
     },
     "joao": {
         "nome": "João Vicente - Marketing",
-        "empresa": "Minimal Club", 
+        "empresa": "Minimal Club",
         "email": "joao.vicente@moonventures.com.br"
     },
     "guilherme": {
@@ -90,29 +90,16 @@ def get_usuario_from_url():
     try:
         query_params = st.query_params
         
-        # Removendo todas as mensagens de debug
-        # st.sidebar.write("🔍 Debug - Parâmetros da URL:", dict(query_params))
-        
         usuario_id = query_params.get("user", "")
         if usuario_id:
             usuario_id = usuario_id.lower().strip()
-            # st.sidebar.write(f"🔍 Debug - User ID encontrado: '{usuario_id}'")
             
             if usuario_id in USUARIOS_CONFIG:
-                # st.sidebar.write(f"✅ Debug - Usuário válido encontrado!")
                 return usuario_id, USUARIOS_CONFIG[usuario_id]
-            else:
-                # st.sidebar.write(f"❌ Debug - Usuário '{usuario_id}' não encontrado na configuração")
-                # st.sidebar.write(f"🔍 Debug - Usuários disponíveis: {list(USUARIOS_CONFIG.keys())}")
-                pass
-        else:
-            # st.sidebar.write("❌ Debug - Nenhum parâmetro 'user' encontrado na URL")
-            pass
-            
+        
         return None, None
         
     except Exception as e:
-        # st.sidebar.error(f"❌ Erro ao processar URL: {e}")
         return None, None
 
 # ================================
@@ -153,13 +140,13 @@ def upload_to_drive(file, empresa):
     if not folder_id:
         st.error(f"❌ ID da pasta não encontrado para a empresa: {empresa}")
         st.stop()
-
+    
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.name)[-1]) as tmp:
         tmp.write(file.read())
         tmp_path = tmp.name
-
+    
     filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.name}"
-
+    
     try:
         gfile = drive.CreateFile({'title': filename, 'parents': [{'id': folder_id}]})
         gfile.SetContentFile(tmp_path)
@@ -170,7 +157,7 @@ def upload_to_drive(file, empresa):
             'role': 'reader'
         })
         return gfile['alternateLink'], tmp_path
-
+        
     except Exception as e:
         st.error(f"❌ Erro ao fazer upload para o Drive: {e}")
         st.stop()
@@ -180,15 +167,15 @@ def upload_to_drive(file, empresa):
 # ================================
 def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
     config = st.secrets["email"]
-
+    
     msg = MIMEMultipart()
     msg['From'] = config["sender"]
     msg['To'] = destinatario
     msg['Subject'] = "Confirmação de Registro de Compra"
-
+    
     corpo = "".join([f"<b>{chave}:</b> {valor}<br>" for chave, valor in dados.items()])
     msg.attach(MIMEText(corpo, 'html'))
-
+    
     if anexo_path and anexo_nome:
         try:
             with open(anexo_path, "rb") as f:
@@ -199,7 +186,7 @@ def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
                 msg.attach(part)
         except Exception as e:
             st.warning(f"❗ Não foi possível anexar o arquivo: {e}")
-
+    
     try:
         with smtplib.SMTP(config["smtp_server"], config["smtp_port"]) as server:
             server.starttls()
@@ -211,11 +198,11 @@ def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
 # ================================
 # 9. Função para gerar links personalizados
 # ================================
-def gerar_links_usuarios():
+def gerar_links_usuarios(mostrar_todos=True, usuario_atual=None):
     """Gera links personalizados para cada usuário"""
     # URL real do seu aplicativo
     base_url = "https://projeto-cartao-hvavcfzkhdesmg9jtrygne.streamlit.app"
-
+    
     st.subheader("🔗 Links Personalizados dos Usuários")
     st.info("Compartilhe estes links com cada usuário para acesso direto:")
 
