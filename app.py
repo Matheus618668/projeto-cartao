@@ -317,18 +317,21 @@ menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar C
 
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
-    
-    # Permitir seleção de empresa apenas para Mariana e Linhares
+
+    # Permitir seleção de empresa apenas para Mariana, Linhares e Bia
     empresa_selecionada = usuario_info['empresa']  # Valor padrão
+
+    # Verificar se o usuário é Mariana, Linhares ou Bia
+    usuarios_especiais = ["Mariana - Facilities", "Pedro Linhares - Logística", "Bia - Secretária"]
     
-    # Verificar se o usuário é Mariana ou Linhares
-    if usuario_info['nome'] in ["Mariana - Facilities", "Pedro Linhares - Logística", "Bia - Secretária"]:
+    if usuario_info['nome'] in usuarios_especiais:
         # Opções de empresas disponíveis
         empresas_disponiveis = ["Moon Ventures", "Minimal Club", "Hoomy"]
         empresa_selecionada = st.selectbox(
             "🏢 Selecione a empresa para esta compra:",
             options=empresas_disponiveis,
-            index=empresas_disponiveis.index(usuario_info['empresa']) if usuario_info['empresa'] in empresas_disponiveis else 0
+            index=empresas_disponiveis.index(usuario_info['empresa']) if usuario_info['empresa'] in empresas_disponiveis else 0,
+            key="empresa_selecionada"
         )
     else:
         # Para outros usuários, mostrar apenas sua empresa fixa
@@ -384,6 +387,16 @@ if menu == "Inserir Compra":
         if erros:
             st.error("\n".join(["❌ " + erro for erro in erros]))
         else:
+
+            # Adicionar um estado para controlar a confirmação
+        if "confirmar_empresa" not in st.session_state:
+        st.session_state.confirmar_empresa = False
+    
+        if "empresa_confirmada" not in st.session_state:
+        st.session_state.empresa_confirmada = False
+
+    # Função para processar o salvamento
+    def salvar_compra_final():
             # Upload do comprovante
             link_drive, path_comprovante = upload_to_drive(comprovante, empresa_selecionada)
             
@@ -453,6 +466,51 @@ if menu == "Inserir Compra":
 
             st.success("✅ Compra registrada com sucesso!")
             st.session_state["compra_salva"] = True
+        # Resetar estados
+            st.session_state.confirmar_empresa = False
+            st.session_state.empresa_confirmada = False
+# Botão principal de salvar
+    if st.button("✅ Salvar Compra"):
+        erros = []
+        if not fornecedor: erros.append("Fornecedor não informado.")
+        if valor <= 0: erros.append("Valor deve ser maior que zero.")
+        if not descricao: erros.append("Descrição da compra não informada.")
+        if not comprovante: erros.append("Comprovante não anexado.")
+        
+        if erros:
+            st.error("\n".join(["❌ " + erro for erro in erros]))
+        else:
+            # Se for um dos usuários especiais, mostrar confirmação
+            if usuario_info['nome'] in usuarios_especiais:
+                st.session_state.confirmar_empresa = True
+            else:
+                # Para outros usuários, salvar direto
+                salvar_compra_final()
+
+    # Modal de confirmação de empresa
+    if st.session_state.confirmar_empresa and not st.session_state.empresa_confirmada:
+        st.markdown("---")
+        st.warning(f"""
+        ⚠️ **CONFIRMAÇÃO DE EMPRESA**
+        
+        Você está prestes a registrar uma compra para a empresa:
+        
+        ## 🏢 **{empresa_selecionada}**
+        
+        Esta é a empresa correta?
+        """)
+        
+        col1, col2, col3 = st.columns([1, 1, 2])
+        
+        with col1:
+            if st.button("✅ SIM", type="primary", use_container_width=True):
+                st.session_state.empresa_confirmada = True
+                salvar_compra_final()
+                
+        with col2:
+            if st.button("❌ NÃO", type="secondary", use_container_width=True):
+                st.session_state.confirmar_empresa = False
+                st.info("👆 Por favor, selecione a empresa correta no campo acima e clique em 'Salvar Compra' novamente.")
 
     if st.session_state.get("compra_salva", False):
         st.markdown("---")
