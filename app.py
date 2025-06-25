@@ -57,7 +57,7 @@ USUARIOS_CONFIG = {
     "mariana": {
         "nome": "Mariana - Facilities",
         "empresa": "Moon Ventures",
-        "email": "Facilities@moonventures.com"
+        "email": "facilities@moonventures.com"
     },
     "joao": {
         "nome": "João Vicente - Marketing",
@@ -67,7 +67,7 @@ USUARIOS_CONFIG = {
     "guilherme": {
         "nome": "Guilherme Pettenati - Hoomy",
         "empresa": "Hoomy",
-        "email": "Pettenatti@hoomy.com"
+        "email": "pettenatti@hoomy.com"
     },
     "linhares": {
         "nome": "Pedro Linhares - Logística",
