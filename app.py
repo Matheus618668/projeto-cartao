@@ -73,6 +73,11 @@ USUARIOS_CONFIG = {
         "nome": "Pedro Linhares - Logística",
         "empresa": "Moon Ventures",
         "email": "logistica@moonventures.com"
+    },
+    "beatriz" {
+        "nome": "Bia - Secretária",
+        "empresa": "Moon Ventures"
+        "email": "secretaria@moonventures.com"
     }
     # Adicione mais usuários conforme necessário
 }
@@ -317,7 +322,7 @@ if menu == "Inserir Compra":
     empresa_selecionada = usuario_info['empresa']  # Valor padrão
     
     # Verificar se o usuário é Mariana ou Linhares
-    if usuario_info['nome'] in ["Mariana - Facilities", "Pedro Linhares - Logística"]:
+    if usuario_info['nome'] in ["Mariana - Facilities", "Pedro Linhares - Logística", "Bia - Secretária"]:
         # Opções de empresas disponíveis
         empresas_disponiveis = ["Moon Ventures", "Minimal Club", "Hoomy"]
         empresa_selecionada = st.selectbox(
