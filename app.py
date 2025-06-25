@@ -74,9 +74,9 @@ USUARIOS_CONFIG = {
         "empresa": "Moon Ventures",
         "email": "logistica@moonventures.com"
     },
-    "beatriz": {
+    "beatriz" {
         "nome": "Bia - Secretária",
-        "empresa": "Moon Ventures",
+        "empresa": "Moon Ventures"
         "email": "secretaria@moonventures.com"
     }
     # Adicione mais usuários conforme necessário
@@ -209,97 +209,7 @@ def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
         st.warning(f"❌ Email não enviado: {e}")
 
 # ================================
-# 9. Função para confirmação de empresa (NOVA FUNCIONALIDADE)
-# ================================
-def mostrar_confirmacao_empresa(empresa_selecionada, usuario_nome):
-    """
-    Mostra confirmação de empresa para usuários específicos
-    """
-    usuarios_confirmacao = ["Mariana - Facilities", "Pedro Linhares - Logística", "Bia - Secretária"]
-    
-    if usuario_nome in usuarios_confirmacao:
-        # Inicializa o estado de confirmação se não existir
-        if 'confirmacao_empresa' not in st.session_state:
-            st.session_state.confirmacao_empresa = None
-        
-        # Se ainda não confirmou, mostra a mensagem
-        if st.session_state.confirmacao_empresa is None:
-            st.warning(f"⚠️ Você selecionou a empresa: **{empresa_selecionada}**")
-            st.info("📋 Por favor, confirme se esta é a empresa correta para esta compra:")
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("✅ Sim, empresa correta", key="confirmar_sim"):
-                    st.session_state.confirmacao_empresa = True
-                    st.rerun()
-            with col2:
-                if st.button("❌ Não, alterar empresa", key="confirmar_nao"):
-                    st.session_state.confirmacao_empresa = False
-                    st.rerun()
-            
-            return False  # Não permite continuar até confirmar
-        
-        elif st.session_state.confirmacao_empresa == False:
-            st.info("🔄 Você pode alterar a empresa acima e salvar novamente.")
-            # Reset do estado para permitir nova seleção
-            if st.button("🔄 Nova tentativa"):
-                st.session_state.confirmacao_empresa = None
-                st.rerun()
-            return False
-        
-        else:  # confirmacao_empresa == True
-            return True
-    
-    else:
-        # Para outros usuários, sempre permite continuar
-        return True
-# ================================
-# 10. Função para confirmação de empresa (NOVA FUNCIONALIDADE)
-# ================================
-def mostrar_confirmacao_empresa(empresa_selecionada, usuario_nome):
-    """
-    Mostra confirmação de empresa para usuários específicos
-    """
-    usuarios_confirmacao = ["Mariana - Facilities", "Pedro Linhares - Logística", "Bia - Secretária"]
-    
-    if usuario_nome in usuarios_confirmacao:
-        # Inicializa o estado de confirmação se não existir
-        if 'confirmacao_empresa' not in st.session_state:
-            st.session_state.confirmacao_empresa = None
-        
-        # Se ainda não confirmou, mostra a mensagem
-        if st.session_state.confirmacao_empresa is None:
-            st.warning(f"⚠️ Você selecionou a empresa: **{empresa_selecionada}**")
-            st.info("📋 Por favor, confirme se esta é a empresa correta para esta compra:")
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("✅ Sim, empresa correta", key="confirma_sim", type="primary"):
-                    st.session_state.confirmacao_empresa = True
-                    st.rerun()
-            
-            with col2:
-                if st.button("❌ Não, alterar empresa", key="confirma_nao"):
-                    st.session_state.confirmacao_empresa = False
-                    st.rerun()
-            
-            return False  # Bloqueia o salvamento
-        
-        elif st.session_state.confirmacao_empresa == False:
-            st.info("🔄 Você pode alterar a empresa acima e depois salvar novamente.")
-            if st.button("🔄 Resetar confirmação", key="reset_confirmacao"):
-                st.session_state.confirmacao_empresa = None
-                st.rerun()
-            return False  # Bloqueia o salvamento
-        
-        else:  # confirmacao_empresa == True
-            return True  # Permite o salvamento
-    
-    else:
-        return True  # Para outros usuários, sempre permite salvar
-        
-# ================================
-# 11. Função para gerar links personalizados
+# 9. Função para gerar links personalizados
 # ================================
 def gerar_links_usuarios():
     """Gera links personalizados para cada usuário"""
@@ -464,97 +374,27 @@ if menu == "Inserir Compra":
     descricao = st.text_area("📝 Descrição da Compra", key="descricao")
     comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
 
-     # NOVA FUNCIONALIDADE: Confirmação de empresa
-    usuarios_confirmacao = ["Mariana - Facilities", "Pedro Linhares - Logística", "Bia - Secretária"]
-
     if st.button("✅ Salvar Compra"):
         erros = []
         if not fornecedor: erros.append("Fornecedor não informado.")
         if valor <= 0: erros.append("Valor deve ser maior que zero.")
         if not descricao: erros.append("Descrição da compra não informada.")
         if not comprovante: erros.append("Comprovante não anexado.")
-        
+
         if erros:
             st.error("\n".join(["❌ " + erro for erro in erros]))
         else:
-            # Salva os dados na sessão para não perder após rerun
-            st.session_state['dados_compra'] = {
-                'data_compra': data_compra,
-                'fornecedor': fornecedor,
-                'valor': valor,
-                'valor_formatado': valor_formatado,
-                'parcelado': parcelado,
-                'parcelas': parcelas,
-                'valor_parcela': valor_parcela,
-                'descricao': descricao,
-                'email_opcional': email_opcional,
-                'comprovante': comprovante,
-                'empresa_selecionada': empresa_selecionada
-            }
-            
-            # NOVA FUNCIONALIDADE: Confirmação de empresa para usuários específicos
-            usuarios_confirmacao = ["Mariana - Facilities", "Pedro Linhares - Logística", "Bia - Secretária"]
-            
-            if usuario_info['nome'] in usuarios_confirmacao:
-                # Se ainda não confirmou, mostra a confirmação
-                if 'confirmacao_empresa' not in st.session_state:
-                    st.session_state.confirmacao_empresa = None
-                
-                if st.session_state.confirmacao_empresa is None:
-                    st.warning(f"⚠️ Você selecionou a empresa: **{empresa_selecionada}**")
-                    st.info("📋 Por favor, confirme se esta é a empresa correta para esta compra:")
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if st.button("✅ Sim, empresa correta", key="confirma_sim"):
-                            st.session_state.confirmacao_empresa = True
-                            st.rerun()
-                    with col2:
-                        if st.button("❌ Não, alterar empresa", key="confirma_nao"):
-                            st.session_state.confirmacao_empresa = False
-                            st.info("👆 Altere a empresa acima e clique em 'Salvar Compra' novamente.")
-                            # Limpa os dados salvos para nova tentativa
-                            if 'dados_compra' in st.session_state:
-                                del st.session_state['dados_compra']
-                    
-                    st.stop()  # Para aqui até a confirmação
-                
-                # Se confirmou como False, permite nova tentativa
-                if st.session_state.confirmacao_empresa == False:
-                    st.session_state.confirmacao_empresa = None
-                    if 'dados_compra' in st.session_state:
-                        del st.session_state['dados_compra']
-                    st.info("👆 Altere a empresa acima e clique em 'Salvar Compra' novamente.")
-                    st.stop()
-            
-            # Se chegou aqui, pode salvar (confirmação aprovada ou usuário não precisa confirmar)
-            # Recupera dados da sessão se existirem
-            if 'dados_compra' in st.session_state:
-                dados = st.session_state['dados_compra']
-                data_compra = dados['data_compra']
-                fornecedor = dados['fornecedor']
-                valor = dados['valor']
-                valor_formatado = dados['valor_formatado']
-                parcelado = dados['parcelado']
-                parcelas = dados['parcelas']
-                valor_parcela = dados['valor_parcela']
-                descricao = dados['descricao']
-                email_opcional = dados['email_opcional']
-                comprovante = dados['comprovante']
-                empresa_selecionada = dados['empresa_selecionada']
-            
-            # PROCEDE COM O SALVAMENTO
             # Upload do comprovante
             link_drive, path_comprovante = upload_to_drive(comprovante, empresa_selecionada)
-
+            
             # Obter a aba específica do usuário
             worksheet = get_worksheet_by_usuario(usuario_info)
-
+            
             # Verificar se cabeçalhos existem
             try:
                 headers_existentes = worksheet.row_values(1)
                 headers_esperados = ["Data", "Empresa", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
-
+                
                 if not headers_existentes or headers_existentes != headers_esperados:
                     if not headers_existentes:
                         worksheet.append_row(headers_esperados)
@@ -563,43 +403,43 @@ if menu == "Inserir Compra":
                         worksheet.append_row(headers_esperados)
             except Exception as e:
                 st.warning(f"Aviso ao verificar cabeçalhos: {e}")
-            
+
             # Salvar no arquivo local
             df = pd.read_excel(data_file)
             if list(df.columns) != colunas_corretas:
                 df = df.reindex(columns=colunas_corretas)
-            
+
             novas_linhas = []
             for i in range(parcelas):
                 parcela_atual = f"{i+1}/{parcelas}" if parcelas > 1 else "1/1"
                 linha = [
                     datetime.today().strftime('%Y-%m-%d'),
-                    empresa_selecionada, # usar empresa selecionada
-                    fornecedor,
-                    valor,
-                    parcelado,
-                    parcelas,
-                    valor_parcela,
-                    usuario_info['nome'],
-                    parcela_atual,
-                    descricao,
+                    empresa_selecionada, #usar empresa selecionada
+                    fornecedor, 
+                    valor, 
+                    parcelado, 
+                    parcelas, 
+                    valor_parcela, 
+                    usuario_info['nome'], 
+                    parcela_atual, 
+                    descricao, 
                     link_drive,
                     data_compra.strftime('%Y-%m-%d')
                 ]
                 novas_linhas.append(linha)
-            
+
             df = pd.concat([df, pd.DataFrame(novas_linhas, columns=colunas_corretas)], ignore_index=True)
             df.to_excel(data_file, index=False)
-
+            
             # Adicionar na aba específica do usuário
             for linha in novas_linhas:
                 worksheet.append_row(linha)
-            
+
             # Enviar email se solicitado
             if email_opcional:
                 dados_email = {
                     "Data": datetime.today().strftime('%Y-%m-%d'),
-                    "Empresa": empresa_selecionada,  # usar empresa selecionada
+                    "Empresa": usuario_info['empresa'],
                     "Fornecedor": fornecedor,
                     "Valor Total": valor_formatado,
                     "Parcelado": parcelado,
@@ -610,15 +450,9 @@ if menu == "Inserir Compra":
                     "Data da Compra": data_compra.strftime('%d/%m/%Y')
                 }
                 enviar_email(email_opcional, dados_email, anexo_path=path_comprovante, anexo_nome=comprovante.name)
-            
+
             st.success("✅ Compra registrada com sucesso!")
             st.session_state["compra_salva"] = True
-            
-            # Limpa os dados temporários e confirmação
-            if 'dados_compra' in st.session_state:
-                del st.session_state['dados_compra']
-            if 'confirmacao_empresa' in st.session_state:
-                del st.session_state['confirmacao_empresa']
 
     if st.session_state.get("compra_salva", False):
         st.markdown("---")
