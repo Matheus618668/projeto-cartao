@@ -473,39 +473,48 @@ if menu == "Inserir Compra":
         if valor <= 0: erros.append("Valor deve ser maior que zero.")
         if not descricao: erros.append("Descrição da compra não informada.")
         if not comprovante: erros.append("Comprovante não anexado.")
-
+        
         if erros:
             st.error("\n".join(["❌ " + erro for erro in erros]))
         else:
-            # NOVA LÓGICA: Se for usuário que precisa confirmar empresa
+            # NOVA FUNCIONALIDADE: Confirmação de empresa para usuários específicos
+            usuarios_confirmacao = ["Mariana - Facilities", "Pedro Linhares - Logística", "Bia - Secretária"]
+            
             if usuario_info['nome'] in usuarios_confirmacao:
-                # Mostra confirmação de empresa
-                st.warning(f"⚠️ Você selecionou a empresa: **{empresa_selecionada}**")
-                st.info("📋 Confirme se esta é a empresa correta para esta compra:")
+                # Inicializa confirmação se não existir
+                if 'confirmacao_empresa' not in st.session_state:
+                    st.session_state.confirmacao_empresa = None
                 
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("✅ SIM - Empresa Correta", key="confirma_sim"):
-                        st.session_state['empresa_confirmada'] = True
-                        st.session_state['empresa_final'] = empresa_selecionada
-                        st.rerun()
-                
-                with col2:
-                    if st.button("❌ NÃO - Alterar Empresa", key="confirma_nao"):
-                        st.session_state['empresa_confirmada'] = False
-                        st.info("👆 Por favor, selecione a empresa correta acima e clique em 'Salvar Compra' novamente.")
+                # Se ainda não confirmou, mostra a confirmação
+                if st.session_state.confirmacao_empresa is None:
+                    st.warning(f"⚠️ Você selecionou a empresa: **{empresa_selecionada}**")
+                    st.info("📋 Por favor, confirme se esta é a empresa correta para esta compra:")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("✅ Sim, empresa correta", key="confirma_sim"):
+                            st.session_state.confirmacao_empresa = True
+                            # NÃO FAZ RERUN - continua o processo
+                    with col2:
+                        if st.button("❌ Não, alterar empresa", key="confirma_nao"):
+                            st.session_state.confirmacao_empresa = False
+                            st.info("👆 Altere a empresa acima e clique em 'Salvar Compra' novamente.")
+                            st.stop()
+                    
+                    # Se não confirmou ainda, para aqui
+                    if st.session_state.confirmacao_empresa is None:
                         st.stop()
                 
-                # Se ainda não confirmou, para a execução aqui
-                if 'empresa_confirmada' not in st.session_state or not st.session_state.get('empresa_confirmada', False):
+                # Se confirmou como False, limpa a confirmação para nova tentativa
+                if st.session_state.confirmacao_empresa == False:
+                    st.session_state.confirmacao_empresa = None
+                    st.info("👆 Altere a empresa acima e clique em 'Salvar Compra' novamente.")
                     st.stop()
             
-            # Se chegou até aqui, pode salvar (seja usuário comum ou já confirmou)
-            empresa_para_salvar = st.session_state.get('empresa_final', empresa_selecionada)
-            
+            # CONTINUA COM O SALVAMENTO (confirmação aprovada ou usuário não precisa confirmar)
             # Upload do comprovante
             link_drive, path_comprovante = upload_to_drive(comprovante, empresa_selecionada)
-            
+
             # Obter a aba específica do usuário
             worksheet = get_worksheet_by_usuario(usuario_info)
             
