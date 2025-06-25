@@ -61,7 +61,7 @@ USUARIOS_CONFIG = {
     },
     "joao": {
         "nome": "João Vicente - Marketing",
-        "empresa": "Minimal Club",
+        "empresa": "Minimal Club", 
         "email": "joao.vicente@moonventures.com.br"
     },
     "guilherme": {
@@ -90,16 +90,29 @@ def get_usuario_from_url():
     try:
         query_params = st.query_params
         
+        # Removendo todas as mensagens de debug
+        # st.sidebar.write("🔍 Debug - Parâmetros da URL:", dict(query_params))
+        
         usuario_id = query_params.get("user", "")
         if usuario_id:
             usuario_id = usuario_id.lower().strip()
+            # st.sidebar.write(f"🔍 Debug - User ID encontrado: '{usuario_id}'")
             
             if usuario_id in USUARIOS_CONFIG:
+                # st.sidebar.write(f"✅ Debug - Usuário válido encontrado!")
                 return usuario_id, USUARIOS_CONFIG[usuario_id]
-        
+            else:
+                # st.sidebar.write(f"❌ Debug - Usuário '{usuario_id}' não encontrado na configuração")
+                # st.sidebar.write(f"🔍 Debug - Usuários disponíveis: {list(USUARIOS_CONFIG.keys())}")
+                pass
+        else:
+            # st.sidebar.write("❌ Debug - Nenhum parâmetro 'user' encontrado na URL")
+            pass
+            
         return None, None
         
     except Exception as e:
+        # st.sidebar.error(f"❌ Erro ao processar URL: {e}")
         return None, None
 
 # ================================
@@ -140,13 +153,13 @@ def upload_to_drive(file, empresa):
     if not folder_id:
         st.error(f"❌ ID da pasta não encontrado para a empresa: {empresa}")
         st.stop()
-    
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.name)[-1]) as tmp:
         tmp.write(file.read())
         tmp_path = tmp.name
-    
+
     filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.name}"
-    
+
     try:
         gfile = drive.CreateFile({'title': filename, 'parents': [{'id': folder_id}]})
         gfile.SetContentFile(tmp_path)
@@ -157,7 +170,7 @@ def upload_to_drive(file, empresa):
             'role': 'reader'
         })
         return gfile['alternateLink'], tmp_path
-        
+
     except Exception as e:
         st.error(f"❌ Erro ao fazer upload para o Drive: {e}")
         st.stop()
@@ -167,15 +180,15 @@ def upload_to_drive(file, empresa):
 # ================================
 def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
     config = st.secrets["email"]
-    
+
     msg = MIMEMultipart()
     msg['From'] = config["sender"]
     msg['To'] = destinatario
     msg['Subject'] = "Confirmação de Registro de Compra"
-    
+
     corpo = "".join([f"<b>{chave}:</b> {valor}<br>" for chave, valor in dados.items()])
     msg.attach(MIMEText(corpo, 'html'))
-    
+
     if anexo_path and anexo_nome:
         try:
             with open(anexo_path, "rb") as f:
@@ -186,7 +199,7 @@ def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
                 msg.attach(part)
         except Exception as e:
             st.warning(f"❗ Não foi possível anexar o arquivo: {e}")
-    
+
     try:
         with smtplib.SMTP(config["smtp_server"], config["smtp_port"]) as server:
             server.starttls()
@@ -198,11 +211,11 @@ def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
 # ================================
 # 9. Função para gerar links personalizados
 # ================================
-def gerar_links_usuarios(mostrar_todos=True, usuario_atual=None):
+def gerar_links_usuarios():
     """Gera links personalizados para cada usuário"""
     # URL real do seu aplicativo
     base_url = "https://projeto-cartao-hvavcfzkhdesmg9jtrygne.streamlit.app"
-    
+
     st.subheader("🔗 Links Personalizados dos Usuários")
     st.info("Compartilhe estes links com cada usuário para acesso direto:")
 
@@ -304,21 +317,18 @@ menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar C
 
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
-
-    # Permitir seleção de empresa apenas para Mariana, Linhares e Bia
-    empresa_selecionada = usuario_info['empresa']  # Valor padrão
-
-    # Verificar se o usuário é Mariana, Linhares ou Bia
-    usuarios_especiais = ["Mariana - Facilities", "Pedro Linhares - Logística", "Bia - Secretária"]
     
-    if usuario_info['nome'] in usuarios_especiais:
+    # Permitir seleção de empresa apenas para Mariana e Linhares
+    empresa_selecionada = usuario_info['empresa']  # Valor padrão
+    
+    # Verificar se o usuário é Mariana ou Linhares
+    if usuario_info['nome'] in ["Mariana - Facilities", "Pedro Linhares - Logística", "Bia - Secretária"]:
         # Opções de empresas disponíveis
         empresas_disponiveis = ["Moon Ventures", "Minimal Club", "Hoomy"]
         empresa_selecionada = st.selectbox(
             "🏢 Selecione a empresa para esta compra:",
             options=empresas_disponiveis,
-            index=empresas_disponiveis.index(usuario_info['empresa']) if usuario_info['empresa'] in empresas_disponiveis else 0,
-            key="empresa_selecionada"
+            index=empresas_disponiveis.index(usuario_info['empresa']) if usuario_info['empresa'] in empresas_disponiveis else 0
         )
     else:
         # Para outros usuários, mostrar apenas sua empresa fixa
@@ -374,16 +384,6 @@ if menu == "Inserir Compra":
         if erros:
             st.error("\n".join(["❌ " + erro for erro in erros]))
         else:
-
-            # Adicionar um estado para controlar a confirmação
-        if "confirmar_empresa" not in st.session_state:
-        st.session_state.confirmar_empresa = False
-    
-        if "empresa_confirmada" not in st.session_state:
-        st.session_state.empresa_confirmada = False
-
-    # Função para processar o salvamento
-    def salvar_compra_final():
             # Upload do comprovante
             link_drive, path_comprovante = upload_to_drive(comprovante, empresa_selecionada)
             
@@ -453,51 +453,6 @@ if menu == "Inserir Compra":
 
             st.success("✅ Compra registrada com sucesso!")
             st.session_state["compra_salva"] = True
-        # Resetar estados
-            st.session_state.confirmar_empresa = False
-            st.session_state.empresa_confirmada = False
-# Botão principal de salvar
-    if st.button("✅ Salvar Compra"):
-        erros = []
-        if not fornecedor: erros.append("Fornecedor não informado.")
-        if valor <= 0: erros.append("Valor deve ser maior que zero.")
-        if not descricao: erros.append("Descrição da compra não informada.")
-        if not comprovante: erros.append("Comprovante não anexado.")
-        
-        if erros:
-            st.error("\n".join(["❌ " + erro for erro in erros]))
-        else:
-            # Se for um dos usuários especiais, mostrar confirmação
-            if usuario_info['nome'] in usuarios_especiais:
-                st.session_state.confirmar_empresa = True
-            else:
-                # Para outros usuários, salvar direto
-                salvar_compra_final()
-
-    # Modal de confirmação de empresa
-    if st.session_state.confirmar_empresa and not st.session_state.empresa_confirmada:
-        st.markdown("---")
-        st.warning(f"""
-        ⚠️ **CONFIRMAÇÃO DE EMPRESA**
-        
-        Você está prestes a registrar uma compra para a empresa:
-        
-        ## 🏢 **{empresa_selecionada}**
-        
-        Esta é a empresa correta?
-        """)
-        
-        col1, col2, col3 = st.columns([1, 1, 2])
-        
-        with col1:
-            if st.button("✅ SIM", type="primary", use_container_width=True):
-                st.session_state.empresa_confirmada = True
-                salvar_compra_final()
-                
-        with col2:
-            if st.button("❌ NÃO", type="secondary", use_container_width=True):
-                st.session_state.confirmar_empresa = False
-                st.info("👆 Por favor, selecione a empresa correta no campo acima e clique em 'Salvar Compra' novamente.")
 
     if st.session_state.get("compra_salva", False):
         st.markdown("---")
