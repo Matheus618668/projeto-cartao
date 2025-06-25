@@ -57,27 +57,27 @@ USUARIOS_CONFIG = {
     "mariana": {
         "nome": "Mariana - Facilities",
         "empresa": "Moon Ventures",
-        "email": "facilities@moonventures.com"
+        "email": "mariana.araujo@moonventures.com.br"
     },
     "joao": {
         "nome": "João Vicente - Marketing",
         "empresa": "Minimal Club", 
-        "email": "marketing@minimalclub.com"
+        "email": "joao.vicente@moonventures.com.br"
     },
     "guilherme": {
         "nome": "Guilherme Pettenati - Hoomy",
         "empresa": "Hoomy",
-        "email": "pettenatti@hoomy.com"
+        "email": "alice.coelho@hoomy.com.br"
     },
     "linhares": {
         "nome": "Pedro Linhares - Logística",
         "empresa": "Moon Ventures",
-        "email": "logistica@moonventures.com"
+        "email": "logistica@moonventures.com.br"
     },
     "beatriz": {
         "nome": "Bia - Secretária",
         "empresa": "Moon Ventures",
-        "email": "secretaria@moonventures.com"
+        "email": "beatriz.cordeiro@moonventures.com.br"
     }
     # Adicione mais usuários conforme necessário
 }
