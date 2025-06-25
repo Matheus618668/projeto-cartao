@@ -76,7 +76,7 @@ USUARIOS_CONFIG = {
     },
     "beatriz": {
         "nome": "Bia - Secretária",
-        "empresa": "Moon Ventures"
+        "empresa": "Moon Ventures",
         "email": "secretaria@moonventures.com"
     }
     # Adicione mais usuários conforme necessário
