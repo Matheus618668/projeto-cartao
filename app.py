@@ -209,7 +209,97 @@ def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
         st.warning(f"❌ Email não enviado: {e}")
 
 # ================================
-# 9. Função para gerar links personalizados
+# 9. Função para confirmação de empresa (NOVA FUNCIONALIDADE)
+# ================================
+def mostrar_confirmacao_empresa(empresa_selecionada, usuario_nome):
+    """
+    Mostra confirmação de empresa para usuários específicos
+    """
+    usuarios_confirmacao = ["Mariana - Facilities", "Pedro Linhares - Logística", "Bia - Secretária"]
+    
+    if usuario_nome in usuarios_confirmacao:
+        # Inicializa o estado de confirmação se não existir
+        if 'confirmacao_empresa' not in st.session_state:
+            st.session_state.confirmacao_empresa = None
+        
+        # Se ainda não confirmou, mostra a mensagem
+        if st.session_state.confirmacao_empresa is None:
+            st.warning(f"⚠️ Você selecionou a empresa: **{empresa_selecionada}**")
+            st.info("📋 Por favor, confirme se esta é a empresa correta para esta compra:")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("✅ Sim, empresa correta", key="confirmar_sim"):
+                    st.session_state.confirmacao_empresa = True
+                    st.rerun()
+            with col2:
+                if st.button("❌ Não, alterar empresa", key="confirmar_nao"):
+                    st.session_state.confirmacao_empresa = False
+                    st.rerun()
+            
+            return False  # Não permite continuar até confirmar
+        
+        elif st.session_state.confirmacao_empresa == False:
+            st.info("🔄 Você pode alterar a empresa acima e salvar novamente.")
+            # Reset do estado para permitir nova seleção
+            if st.button("🔄 Nova tentativa"):
+                st.session_state.confirmacao_empresa = None
+                st.rerun()
+            return False
+        
+        else:  # confirmacao_empresa == True
+            return True
+    
+    else:
+        # Para outros usuários, sempre permite continuar
+        return True
+# ================================
+# 10. Função para confirmação de empresa (NOVA FUNCIONALIDADE)
+# ================================
+def mostrar_confirmacao_empresa(empresa_selecionada, usuario_nome):
+    """
+    Mostra confirmação de empresa para usuários específicos
+    """
+    usuarios_confirmacao = ["Mariana - Facilities", "Pedro Linhares - Logística", "Bia - Secretária"]
+    
+    if usuario_nome in usuarios_confirmacao:
+        # Inicializa o estado de confirmação se não existir
+        if 'confirmacao_empresa' not in st.session_state:
+            st.session_state.confirmacao_empresa = None
+        
+        # Se ainda não confirmou, mostra a mensagem
+        if st.session_state.confirmacao_empresa is None:
+            st.warning(f"⚠️ Você selecionou a empresa: **{empresa_selecionada}**")
+            st.info("📋 Por favor, confirme se esta é a empresa correta para esta compra:")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("✅ Sim, empresa correta", key="confirma_sim", type="primary"):
+                    st.session_state.confirmacao_empresa = True
+                    st.rerun()
+            
+            with col2:
+                if st.button("❌ Não, alterar empresa", key="confirma_nao"):
+                    st.session_state.confirmacao_empresa = False
+                    st.rerun()
+            
+            return False  # Bloqueia o salvamento
+        
+        elif st.session_state.confirmacao_empresa == False:
+            st.info("🔄 Você pode alterar a empresa acima e depois salvar novamente.")
+            if st.button("🔄 Resetar confirmação", key="reset_confirmacao"):
+                st.session_state.confirmacao_empresa = None
+                st.rerun()
+            return False  # Bloqueia o salvamento
+        
+        else:  # confirmacao_empresa == True
+            return True  # Permite o salvamento
+    
+    else:
+        return True  # Para outros usuários, sempre permite salvar
+        
+# ================================
+# 11. Função para gerar links personalizados
 # ================================
 def gerar_links_usuarios():
     """Gera links personalizados para cada usuário"""
@@ -374,6 +464,9 @@ if menu == "Inserir Compra":
     descricao = st.text_area("📝 Descrição da Compra", key="descricao")
     comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
 
+     # NOVA FUNCIONALIDADE: Confirmação de empresa
+    usuarios_confirmacao = ["Mariana - Facilities", "Pedro Linhares - Logística", "Bia - Secretária"]
+
     if st.button("✅ Salvar Compra"):
         erros = []
         if not fornecedor: erros.append("Fornecedor não informado.")
@@ -384,6 +477,32 @@ if menu == "Inserir Compra":
         if erros:
             st.error("\n".join(["❌ " + erro for erro in erros]))
         else:
+            # NOVA LÓGICA: Se for usuário que precisa confirmar empresa
+            if usuario_info['nome'] in usuarios_confirmacao:
+                # Mostra confirmação de empresa
+                st.warning(f"⚠️ Você selecionou a empresa: **{empresa_selecionada}**")
+                st.info("📋 Confirme se esta é a empresa correta para esta compra:")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("✅ SIM - Empresa Correta", key="confirma_sim"):
+                        st.session_state['empresa_confirmada'] = True
+                        st.session_state['empresa_final'] = empresa_selecionada
+                        st.rerun()
+                
+                with col2:
+                    if st.button("❌ NÃO - Alterar Empresa", key="confirma_nao"):
+                        st.session_state['empresa_confirmada'] = False
+                        st.info("👆 Por favor, selecione a empresa correta acima e clique em 'Salvar Compra' novamente.")
+                        st.stop()
+                
+                # Se ainda não confirmou, para a execução aqui
+                if 'empresa_confirmada' not in st.session_state or not st.session_state.get('empresa_confirmada', False):
+                    st.stop()
+            
+            # Se chegou até aqui, pode salvar (seja usuário comum ou já confirmou)
+            empresa_para_salvar = st.session_state.get('empresa_final', empresa_selecionada)
+            
             # Upload do comprovante
             link_drive, path_comprovante = upload_to_drive(comprovante, empresa_selecionada)
             
