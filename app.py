@@ -638,7 +638,7 @@ if menu == "Inserir Compra":
         
         if impacto_limite > limite_disponivel:
             erros.append(f"Limite insuficiente! Disponível: R$ {limite_disponivel:,.2f}, Necessário: R$ {impacto_limite:,.2f}")
-        if erros:
+            if erros:
             st.error("\n".join(["❌ " + erro for erro in erros]))
         else:
             # Upload do comprovante
