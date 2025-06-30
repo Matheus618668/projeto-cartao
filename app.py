@@ -494,54 +494,69 @@ if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
     
     # ================================
-    # ADICIONE AQUI - Indicador de Limite do Cartão
+    # Seção do Limite do Cartão
     # ================================
-    # Obter limite do usuário
-    limite_total = usuario_info.get('limite_cartao', 0)
-    
-    if limite_total > 0:
-        # Obter worksheet para calcular limite utilizado
+    if "limite_cartao" in usuario_info:
+        st.markdown("### 💳 Limite do Cartão")
+        
+        # Obter worksheet do usuário
         worksheet = get_worksheet_by_usuario(usuario_info)
+        
+        # Calcular limite utilizado
+        limite_total = usuario_info.get("limite_cartao", 0)
         limite_utilizado = calcular_limite_utilizado(worksheet, usuario_info)
         limite_disponivel = limite_total - limite_utilizado
+        percentual_utilizado = (limite_utilizado / limite_total * 100) if limite_total > 0 else 0
         
-        # Criar colunas para o indicador
-        col1, col2, col3 = st.columns([1, 2, 1])
+        # Barra de progresso
+        progress_color = "normal"
+        if percentual_utilizado > 90:
+            progress_color = "error"
+        elif percentual_utilizado > 70:
+            progress_color = "warning"
+            
+        progress = min(percentual_utilizado / 100, 1.0)
+        st.progress(progress)
+        
+        # Usar colunas com largura maior para evitar corte de texto
+        col1, col2, col3 = st.columns([1.5, 1.5, 1.5])
+        
+        with col1:
+            st.metric(
+                "Limite Total",
+                f"R$ {limite_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
         
         with col2:
-            st.markdown("### 💳 Limite do Cartão")
-            
-            # Calcular porcentagem
-            porcentagem_utilizada = (limite_utilizado / limite_total) * 100
-            
-            # Definir cor baseada na utilização
-            if porcentagem_utilizada < 50:
-                cor = "green"
-            elif porcentagem_utilizada < 80:
-                cor = "orange"
-            else:
-                cor = "red"
-            
-            # Barra de progresso
-            st.progress(limite_utilizado / limite_total)
-            
-            # Métricas
-            col_a, col_b, col_c = st.columns(3)
-            with col_a:
-                st.metric("Limite Total", f"R$ {limite_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-            with col_b:
-                st.metric("Utilizado", f"R$ {limite_utilizado:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), 
-                         delta=f"-{porcentagem_utilizada:.1f}%", delta_color="inverse")
-            with col_c:
-                st.metric("Disponível", f"R$ {limite_disponivel:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-            
-            # Aviso se estiver próximo do limite
-            if porcentagem_utilizada >= 90:
-                st.error("⚠️ Atenção: Você está próximo do limite do cartão!")
-            elif porcentagem_utilizada >= 75:
-                st.warning("⚠️ Cuidado: Já utilizou mais de 75% do seu limite")
-            
-            st.markdown("---")
+            st.metric(
+                "Utilizado",
+                f"R$ {limite_utilizado:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                delta=f"-{percentual_utilizado:.1f}%",
+                delta_color="inverse"
+            )
+        
+        with col3:
+            st.metric(
+                "Disponível",
+                f"R$ {limite_disponivel:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+        
+        # Avisos
+        if percentual_utilizado > 90:
+            st.error("⚠️ Atenção: Você está próximo do limite do cartão!")
+        elif percentual_utilizado > 70:
+            st.warning("⚠️ Atenção: Você já utilizou mais de 70% do seu limite.")
+        
+        # Mostrar quando o limite será renovado
+        hoje = datetime.now()
+        proximo_vencimento = hoje.replace(day=5)
+        if hoje.day >= 5:
+            proximo_vencimento = (hoje.replace(day=1) + relativedelta(months=1)).replace(day=5)
+        
+        dias_para_renovacao = (proximo_vencimento - hoje).days
+        st.info(f"💳 Seu limite será renovado em {dias_para_renovacao} dias (dia {proximo_vencimento.strftime('%d/%m/%Y')})")
+        
+        st.markdown("---")
     
     # Permitir seleção de empresa apenas para Mariana e Linhares
     empresa_selecionada = usuario_info['empresa']  # Valor padrão
