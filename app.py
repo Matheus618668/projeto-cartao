@@ -639,12 +639,12 @@ if menu == "Inserir Compra":
     
         if erros:
             st.error("\n".join(["❌ " + erro for erro in erros]))
-    else:
-        # Upload do comprovante
-        link_drive, path_comprovante = upload_to_drive(comprovante, empresa_selecionada)
+        else:
+            # Upload do comprovante
+            link_drive, path_comprovante = upload_to_drive(comprovante, empresa_selecionada)
         
-        # Obter a aba específica do usuário
-        worksheet = get_worksheet_by_usuario(usuario_info)
+            # Obter a aba específica do usuário
+            worksheet = get_worksheet_by_usuario(usuario_info)
         
         # Verificar se cabeçalhos existem
         try:
