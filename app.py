@@ -623,7 +623,7 @@ if menu == "Inserir Compra":
     
         # Verificar limite disponível
         limite_total = usuario_info.get('limite_cartao', 0)
-        if limite_total > 0:
+    if limite_total > 0:
         worksheet_temp = get_worksheet_by_usuario(usuario_info)
         limite_utilizado_atual = calcular_limite_utilizado(worksheet_temp, usuario_info)
         limite_disponivel = limite_total - limite_utilizado_atual
