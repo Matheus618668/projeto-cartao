@@ -296,7 +296,94 @@ def enviar_email(destinatario, dados, anexo_path=None, anexo_nome=None):
         st.warning(f"❌ Email não enviado: {e}")
 
 # ================================
-# 9. Função para gerar links personalizados
+# 9. Função para calcular limite utilizado
+# ================================
+def calcular_limite_utilizado(worksheet, usuario_info, data_referencia=None):
+    """
+    Calcula o limite utilizado considerando:
+    - Fatura fecha no último dia do mês
+    - Vencimento dia 5
+    - Parcelas futuras comprometem o limite
+    """
+    if data_referencia is None:
+        data_referencia = datetime.now()
+    
+    try:
+        rows = worksheet.get_all_values()
+        if len(rows) <= 1:
+            return 0.0
+        
+        headers = rows[0]
+        dados = rows[1:]
+        
+        # Criar DataFrame
+        df = pd.DataFrame(dados, columns=headers[:len(dados[0])])
+        
+        # Converter valores
+        def parse_valor(valor_str):
+            try:
+                return float(str(valor_str).replace("R$", "").replace(".", "").replace(",", "."))
+            except:
+                return 0.0
+        
+        if "Valor Parcela" in df.columns:
+            df["Valor Parcela"] = df["Valor Parcela"].apply(parse_valor)
+        else:
+            return 0.0
+        
+        # Converter datas
+        if "Data da Compra" in df.columns:
+            df["Data da Compra"] = pd.to_datetime(df["Data da Compra"], errors='coerce')
+        else:
+            return 0.0
+        
+        # Filtrar apenas compras do usuário atual
+        if "Comprador" in df.columns:
+            df = df[df["Comprador"] == usuario_info['nome']]
+        
+        # Calcular parcelas a vencer
+        from dateutil.relativedelta import relativedelta
+        limite_utilizado = 0.0
+        
+        for idx, row in df.iterrows():
+            try:
+                if pd.isna(row.get("Data da Compra")) or pd.isna(row.get("Parcela")):
+                    continue
+                
+                data_compra = row["Data da Compra"]
+                parcela_info = str(row.get("Parcela", "1/1")).split("/")
+                
+                if len(parcela_info) != 2:
+                    continue
+                
+                parcela_atual = int(parcela_info[0])
+                total_parcelas = int(parcela_info[1])
+                valor_parcela = float(row.get("Valor Parcela", 0))
+                
+                # Calcular data de vencimento desta parcela
+                # A primeira parcela vence no próximo dia 5 após a compra
+                data_vencimento = data_compra.replace(day=5)
+                if data_vencimento <= data_compra:
+                    data_vencimento = data_vencimento + relativedelta(months=1)
+                
+                # Adicionar meses para cada parcela
+                data_vencimento = data_vencimento + relativedelta(months=parcela_atual-1)
+                
+                # Se a parcela ainda não foi paga (vencimento futuro), conta no limite
+                if data_vencimento > data_referencia:
+                    limite_utilizado += valor_parcela
+                    
+            except Exception as e:
+                continue
+        
+        return limite_utilizado
+        
+    except Exception as e:
+        st.error(f"Erro ao calcular limite: {e}")
+        return 0.0
+
+# ================================
+# 10. Função para gerar links personalizados
 # ================================
 def gerar_links_usuarios():
     """Gera links personalizados para cada usuário"""
@@ -320,7 +407,7 @@ def gerar_links_usuarios():
 
 
 # ================================
-# 10. App Principal
+# 11. App Principal
 # ================================
 
 # Verifica se há parâmetro de usuário na URL
@@ -405,8 +492,55 @@ menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar C
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
     
-    # Exibir limite do cartão
-    exibir_limite_cartao(usuario_info, usuario_id)
+    # ================================
+    # ADICIONE AQUI - Indicador de Limite do Cartão
+    # ================================
+    # Obter limite do usuário
+    limite_total = usuario_info.get('limite_cartao', 0)
+    
+    if limite_total > 0:
+        # Obter worksheet para calcular limite utilizado
+        worksheet = get_worksheet_by_usuario(usuario_info)
+        limite_utilizado = calcular_limite_utilizado(worksheet, usuario_info)
+        limite_disponivel = limite_total - limite_utilizado
+        
+        # Criar colunas para o indicador
+        col1, col2, col3 = st.columns([1, 2, 1])
+        
+        with col2:
+            st.markdown("### 💳 Limite do Cartão")
+            
+            # Calcular porcentagem
+            porcentagem_utilizada = (limite_utilizado / limite_total) * 100
+            
+            # Definir cor baseada na utilização
+            if porcentagem_utilizada < 50:
+                cor = "green"
+            elif porcentagem_utilizada < 80:
+                cor = "orange"
+            else:
+                cor = "red"
+            
+            # Barra de progresso
+            st.progress(limite_utilizado / limite_total)
+            
+            # Métricas
+            col_a, col_b, col_c = st.columns(3)
+            with col_a:
+                st.metric("Limite Total", f"R$ {limite_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+            with col_b:
+                st.metric("Utilizado", f"R$ {limite_utilizado:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), 
+                         delta=f"-{porcentagem_utilizada:.1f}%", delta_color="inverse")
+            with col_c:
+                st.metric("Disponível", f"R$ {limite_disponivel:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+            
+            # Aviso se estiver próximo do limite
+            if porcentagem_utilizada >= 90:
+                st.error("⚠️ Atenção: Você está próximo do limite do cartão!")
+            elif porcentagem_utilizada >= 75:
+                st.warning("⚠️ Cuidado: Já utilizou mais de 75% do seu limite")
+            
+            st.markdown("---")
     
     # Permitir seleção de empresa apenas para Mariana e Linhares
     empresa_selecionada = usuario_info['empresa']  # Valor padrão
@@ -465,12 +599,30 @@ if menu == "Inserir Compra":
     comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
 
     if st.button("✅ Salvar Compra"):
-        erros = []
-        if not fornecedor: erros.append("Fornecedor não informado.")
-        if valor <= 0: erros.append("Valor deve ser maior que zero.")
-        if not descricao: erros.append("Descrição da compra não informada.")
-        if not comprovante: erros.append("Comprovante não anexado.")
-
+    erros = []
+    if not fornecedor: erros.append("Fornecedor não informado.")
+    if valor <= 0: erros.append("Valor deve ser maior que zero.")
+    if not descricao: erros.append("Descrição da compra não informada.")
+    if not comprovante: erros.append("Comprovante não anexado.")
+    
+    # ================================
+    # ADICIONE AQUI - Verificar limite disponível
+    # ================================
+    limite_total = usuario_info.get('limite_cartao', 0)
+    if limite_total > 0:
+        worksheet_temp = get_worksheet_by_usuario(usuario_info)
+        limite_utilizado_atual = calcular_limite_utilizado(worksheet_temp, usuario_info)
+        limite_disponivel = limite_total - limite_utilizado_atual
+        
+        # Calcular impacto da nova compra
+        if parcelado == "Sim":
+            impacto_limite = valor  # Todas as parcelas comprometem o limite
+        else:
+            impacto_limite = valor
+        
+        if impacto_limite > limite_disponivel:
+            erros.append(f"Limite insuficiente! Disponível: R$ {limite_disponivel:,.2f}, Necessário: R$ {impacto_limite:,.2f}")
+    
         if erros:
             st.error("\n".join(["❌ " + erro for erro in erros]))
         else:
