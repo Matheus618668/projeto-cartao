@@ -57,31 +57,118 @@ USUARIOS_CONFIG = {
     "mariana": {
         "nome": "Mariana - Facilities",
         "empresa": "Moon Ventures",
-        "email": "mariana.araujo@moonventures.com.br"
+        "email": "mariana.araujo@moonventures.com.br",
+        "limite_cartao": 5000.00
     },
     "joao": {
         "nome": "João Vicente - Marketing",
-        "empresa": "Minimal Club", 
-        "email": "joao.vicente@moonventures.com.br"
+        "empresa": "Minimal Club",
+        "email": "joao.vicente@moonventures.com.br",
+        "limite_cartao": 10000.00
     },
     "guilherme": {
         "nome": "Guilherme Pettenati - Hoomy",
         "empresa": "Hoomy",
-        "email": "alice.coelho@hoomy.com.br"
+        "email": "alice.coelho@hoomy.com.br",
+        "limite_cartao": 8000.00
     },
     "linhares": {
         "nome": "Pedro Linhares - Logística",
         "empresa": "Moon Ventures",
-        "email": "logistica@moonventures.com.br"
+        "email": "logistica@moonventures.com.br",
+        "limite_cartao": 7500.00
     },
     "beatriz": {
         "nome": "Bia - Secretária",
         "empresa": "Moon Ventures",
-        "email": "beatriz.cordeiro@moonventures.com.br"
+        "email": "beatriz.cordeiro@moonventures.com.br",
+        "limite_cartao": 3000.00
     }
-    # Adicione mais usuários conforme necessário
 }
 
+# ================================
+# Função para calcular gastos do usuário
+# ================================
+def calcular_gastos_usuario(usuario_info):
+    """Calcula o total de gastos do usuário"""
+    try:
+        worksheet = get_worksheet_by_usuario(usuario_info)
+        rows = worksheet.get_all_values()
+        
+        if len(rows) > 1:
+            headers = rows[0]
+            dados = rows[1:]
+            
+            # Criar DataFrame
+            dados_limpos = []
+            for linha in dados:
+                if len(linha) < len(headers):
+                    linha.extend([''] * (len(headers) - len(linha)))
+                dados_limpos.append(linha[:len(headers)])
+            
+            df = pd.DataFrame(dados_limpos, columns=headers)
+            
+            # Converter valores
+            def parse_valor(valor_str):
+                try:
+                    return float(str(valor_str).replace("R$", "").replace(".", "").replace(",", "."))
+                except:
+                    return 0.0
+            
+            if "Valor" in df.columns:
+                df["Valor"] = df["Valor"].apply(parse_valor)
+                
+                # Remover duplicatas para não contar parcelas múltiplas vezes
+                colunas_para_remover_duplicatas = ["Data", "Fornecedor", "Valor", "Comprador"]
+                colunas_existentes = [col for col in colunas_para_remover_duplicatas if col in df.columns]
+                
+                if colunas_existentes:
+                    df_unico = df.drop_duplicates(subset=colunas_existentes)
+                    return df_unico["Valor"].sum()
+        
+        return 0.0
+    except Exception:
+        return 0.0
+
+# ================================
+# Função para exibir limite do cartão
+# ================================
+def exibir_limite_cartao(usuario_info, usuario_id):
+    """Exibe o limite do cartão com barra de progresso"""
+    limite_total = usuario_info.get("limite_cartao", 0)
+    
+    if limite_total > 0:
+        # Calcular gastos
+        total_gasto = calcular_gastos_usuario(usuario_info)
+        limite_disponivel = limite_total - total_gasto
+        percentual_usado = min((total_gasto / limite_total) * 100, 100)
+        
+        # Container para o limite
+        with st.container():
+            st.markdown("### 💳 Limite do Cartão")
+            
+            # Métricas
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Limite Total", f"R$ {limite_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+            with col2:
+                st.metric("Utilizado", f"R$ {total_gasto:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+            with col3:
+                st.metric("Disponível", f"R$ {limite_disponivel:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+            
+            # Barra de progresso
+            if percentual_usado > 80:
+                cor = "🔴"
+                st.warning(f"⚠️ Atenção! Você já utilizou {percentual_usado:.1f}% do seu limite.")
+            elif percentual_usado > 60:
+                cor = "🟡"
+            else:
+                cor = "🟢"
+            
+            st.markdown(f"{cor} **Utilização do Limite:** {percentual_usado:.1f}%")
+            st.progress(percentual_usado / 100)
+            
+            st.markdown("---")
 # ================================
 # 5. Função para obter usuário da URL
 # ================================
@@ -318,6 +405,9 @@ menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar C
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
     
+    # Exibir limite do cartão
+    exibir_limite_cartao(usuario_info, usuario_id)
+    
     # Permitir seleção de empresa apenas para Mariana e Linhares
     empresa_selecionada = usuario_info['empresa']  # Valor padrão
     
@@ -463,6 +553,9 @@ if menu == "Inserir Compra":
 
 elif menu == "Visualizar Compras":
     st.subheader(f"📊 Compras de {usuario_info['nome']}")
+    
+    # Exibir limite do cartão
+    exibir_limite_cartao(usuario_info, usuario_id)
     
     try:
         worksheet = get_worksheet_by_usuario(usuario_info)
