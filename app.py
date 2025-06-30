@@ -637,16 +637,16 @@ if menu == "Inserir Compra":
         if impacto_limite > limite_disponivel:
             erros.append(f"Limite insuficiente! Disponível: R$ {limite_disponivel:,.2f}, Necessário: R$ {impacto_limite:,.2f}")
     
-        if erros:
-            st.error("\n".join(["❌ " + erro for erro in erros]))
-        else:
-            # Upload do comprovante
-            link_drive, path_comprovante = upload_to_drive(comprovante, empresa_selecionada)
+    if erros:
+        st.error("\n".join(["❌ " + erro for erro in erros]))
+    else:
+        # Upload do comprovante
+        link_drive, path_comprovante = upload_to_drive(comprovante, empresa_selecionada)
         
-            # Obter a aba específica do usuário
-            worksheet = get_worksheet_by_usuario(usuario_info)
+        # Obter a aba específica do usuário
+        worksheet = get_worksheet_by_usuario(usuario_info)
         
-            # Verificar se cabeçalhos existem
+        # Verificar se cabeçalhos existem
         try:
             headers_existentes = worksheet.row_values(1)
             headers_esperados = ["Data", "Empresa", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
