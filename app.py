@@ -621,9 +621,9 @@ if menu == "Inserir Compra":
         if not descricao: erros.append("Descrição da compra não informada.")
         if not comprovante: erros.append("Comprovante não anexado.")
     
-    # Verificar limite disponível
-    limite_total = usuario_info.get('limite_cartao', 0)
-    if limite_total > 0:
+        # Verificar limite disponível
+        limite_total = usuario_info.get('limite_cartao', 0)
+        if limite_total > 0:
         worksheet_temp = get_worksheet_by_usuario(usuario_info)
         limite_utilizado_atual = calcular_limite_utilizado(worksheet_temp, usuario_info)
         limite_disponivel = limite_total - limite_utilizado_atual
@@ -646,7 +646,7 @@ if menu == "Inserir Compra":
             # Obter a aba específica do usuário
             worksheet = get_worksheet_by_usuario(usuario_info)
         
-        # Verificar se cabeçalhos existem
+            # Verificar se cabeçalhos existem
         try:
             headers_existentes = worksheet.row_values(1)
             headers_esperados = ["Data", "Empresa", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
