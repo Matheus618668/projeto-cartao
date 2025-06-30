@@ -615,15 +615,13 @@ if menu == "Inserir Compra":
     comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
 
     if st.button("✅ Salvar Compra"):
-        erros = []
-        if not fornecedor: erros.append("Fornecedor não informado.")
-        if valor <= 0: erros.append("Valor deve ser maior que zero.")
-        if not descricao: erros.append("Descrição da compra não informada.")
-        if not comprovante: erros.append("Comprovante não anexado.")
+    erros = []
+    if not fornecedor: erros.append("Fornecedor não informado.")
+    if valor <= 0: erros.append("Valor deve ser maior que zero.")
+    if not descricao: erros.append("Descrição da compra não informada.")
+    if not comprovante: erros.append("Comprovante não anexado.")
     
-    # ================================
-    # ADICIONE AQUI - Verificar limite disponível
-    # ================================
+    # Verificar limite disponível
     limite_total = usuario_info.get('limite_cartao', 0)
     if limite_total > 0:
         worksheet_temp = get_worksheet_by_usuario(usuario_info)
@@ -632,17 +630,18 @@ if menu == "Inserir Compra":
         
         # Calcular impacto da nova compra
         if parcelado == "Sim":
-            impacto_limite = valor  # Todas as parcelas comprometem o limite
+            impacto_limite = valor
         else:
             impacto_limite = valor
-        
+            
         if impacto_limite > limite_disponivel:
             erros.append(f"Limite insuficiente! Disponível: R$ {limite_disponivel:,.2f}, Necessário: R$ {impacto_limite:,.2f}")
-            if erros:
-            st.error("\n".join(["❌ " + erro for erro in erros]))
-        else:
-            # Upload do comprovante
-            link_drive, path_comprovante = upload_to_drive(comprovante, empresa_selecionada)
+    
+    if erros:
+        st.error("\n".join(["❌ " + erro for erro in erros]))  # ← INDENTADO
+    else:
+        # Upload do comprovante - TAMBÉM INDENTADO
+        link_drive, path_comprovante = upload_to_drive(comprovante, empresa_selecionada)
             
             # Obter a aba específica do usuário
             worksheet = get_worksheet_by_usuario(usuario_info)
