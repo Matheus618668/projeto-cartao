@@ -616,10 +616,10 @@ if menu == "Inserir Compra":
 
     if st.button("✅ Salvar Compra"):
         erros = []
-    if not fornecedor: erros.append("Fornecedor não informado.")
-    if valor <= 0: erros.append("Valor deve ser maior que zero.")
-    if not descricao: erros.append("Descrição da compra não informada.")
-    if not comprovante: erros.append("Comprovante não anexado.")
+        if not fornecedor: erros.append("Fornecedor não informado.")
+        if valor <= 0: erros.append("Valor deve ser maior que zero.")
+        if not descricao: erros.append("Descrição da compra não informada.")
+        if not comprovante: erros.append("Comprovante não anexado.")
     
     # Verificar limite disponível
     limite_total = usuario_info.get('limite_cartao', 0)
