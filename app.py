@@ -638,7 +638,7 @@ if menu == "Inserir Compra":
             erros.append(f"Limite insuficiente! Disponível: R$ {limite_disponivel:,.2f}, Necessário: R$ {impacto_limite:,.2f}")
     
         if erros:
-        st.error("\n".join(["❌ " + erro for erro in erros]))
+            st.error("\n".join(["❌ " + erro for erro in erros]))
     else:
         # Upload do comprovante
         link_drive, path_comprovante = upload_to_drive(comprovante, empresa_selecionada)
