@@ -83,7 +83,7 @@ USUARIOS_CONFIG = {
         "nome": "Bia - Secretária",
         "empresa": "Moon Ventures",
         "email": "beatriz.cordeiro@moonventures.com.br",
-        "limite_cartao": 3000.00
+        "limite_cartao": 4000.00
     }
 }
 
