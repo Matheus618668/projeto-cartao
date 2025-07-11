@@ -84,7 +84,26 @@ USUARIOS_CONFIG = {
         "empresa": "Moon Ventures",
         "email": "beatriz.cordeiro@moonventures.com.br",
         "limite_cartao": 4000.00
-    }
+    },
+    "marcella": {
+        "nome": "Marcella - Compras Internas",
+        "empresa": "Moon Ventures",
+        "email": "marcella.leo@moonventures.com.br",
+        "limite_cartao": 4000.00
+    },
+    "alice arruda": {
+        "nome": "Alice - Mkt Hoomy",
+        "empresa": "Moon Ventures",
+        "email": "alice.coelho@hoomy.com.br",
+        "limite_cartao": 4000.00
+    },
+    "ana laura": {
+        "nome": "Ana - Produtos",
+        "empresa": "Moon Ventures",
+        "email": "ana@moonventures.com.br",
+        "limite_cartao": 4000.00
+    },
+
 }
 
 # ================================
@@ -561,8 +580,8 @@ if menu == "Inserir Compra":
     # Permitir seleção de empresa apenas para Mariana e Linhares
     empresa_selecionada = usuario_info['empresa']  # Valor padrão
     
-    # Verificar se o usuário é Mariana ou Linhares
-    if usuario_info['nome'] in ["Mariana - Facilities", "Pedro Linhares - Logística", "Bia - Secretária"]:
+    # Verificar se o usuário é Mariana, Linhares, Bia, Marcella
+    if usuario_info['nome'] in ["Mariana - Facilities", "Pedro Linhares - Logística", "Bia - Secretária", "Marcella - Compras Internas"]:
         # Opções de empresas disponíveis
         empresas_disponiveis = ["Moon Ventures", "Minimal Club", "Hoomy"]
         empresa_selecionada = st.selectbox(
