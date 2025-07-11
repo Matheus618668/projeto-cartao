@@ -91,13 +91,13 @@ USUARIOS_CONFIG = {
         "email": "marcella.leo@moonventures.com.br",
         "limite_cartao": 4000.00
     },
-    "alice arruda": {
+    "alice": {
         "nome": "Alice - Mkt Hoomy",
         "empresa": "Moon Ventures",
         "email": "alice.coelho@hoomy.com.br",
         "limite_cartao": 4000.00
     },
-    "ana laura": {
+    "ana": {
         "nome": "Ana - Produtos",
         "empresa": "Moon Ventures",
         "email": "ana@moonventures.com.br",
