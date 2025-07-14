@@ -634,14 +634,18 @@ if menu == "Inserir Compra":
     comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
 
     if st.button("✅ Salvar Compra"):
-        erros = []
-        if not fornecedor: erros.append("Fornecedor não informado.")
-        if valor <= 0: erros.append("Valor deve ser maior que zero.")
-        if not descricao: erros.append("Descrição da compra não informada.")
-        if not comprovante: erros.append("Comprovante não anexado.")
-    
-        # Verificar limite disponível
-        limite_total = usuario_info.get('limite_cartao', 0)
+    erros = []
+    if not fornecedor: 
+        erros.append("Fornecedor não informado.")
+    if valor <= 0: 
+        erros.append("Valor deve ser maior que zero.")
+    if not descricao: 
+        erros.append("Descrição da compra não informada.")
+    if not comprovante: 
+        erros.append("Comprovante não anexado.")
+
+    # Verificar limite disponível
+    limite_total = usuario_info.get('limite_cartao', 0)
     if limite_total > 0:
         worksheet_temp = get_worksheet_by_usuario(usuario_info)
         limite_utilizado_atual = calcular_limite_utilizado(worksheet_temp, usuario_info)
@@ -655,7 +659,7 @@ if menu == "Inserir Compra":
             
         if impacto_limite > limite_disponivel:
             erros.append(f"Limite insuficiente! Disponível: R$ {limite_disponivel:,.2f}, Necessário: R$ {impacto_limite:,.2f}")
-    
+
     if erros:
         st.error("\n".join(["❌ " + erro for erro in erros]))
     else:
