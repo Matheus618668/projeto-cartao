@@ -93,7 +93,7 @@ USUARIOS_CONFIG = {
     },
     "alice": {
         "nome": "Alice - Mkt Hoomy",
-        "empresa": "Moon Ventures",
+        "empresa": "Hoomy",
         "email": "alice.coelho@hoomy.com.br",
         "limite_cartao": 4000.00
     },
