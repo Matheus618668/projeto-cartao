@@ -634,112 +634,112 @@ if menu == "Inserir Compra":
     comprovante = st.file_uploader("📁 Anexar Comprovante", type=["pdf", "jpg", "png"])
 
     if st.button("✅ Salvar Compra"):
-    erros = []
-    if not fornecedor: 
-        erros.append("Fornecedor não informado.")
-    if valor <= 0: 
-        erros.append("Valor deve ser maior que zero.")
-    if not descricao: 
-        erros.append("Descrição da compra não informada.")
-    if not comprovante: 
-        erros.append("Comprovante não anexado.")
+        erros = []
+        if not fornecedor: 
+            erros.append("Fornecedor não informado.")
+        if valor <= 0: 
+            erros.append("Valor deve ser maior que zero.")
+        if not descricao: 
+            erros.append("Descrição da compra não informada.")
+        if not comprovante: 
+            erros.append("Comprovante não anexado.")
 
-    # Verificar limite disponível
-    limite_total = usuario_info.get('limite_cartao', 0)
-    if limite_total > 0:
-        worksheet_temp = get_worksheet_by_usuario(usuario_info)
-        limite_utilizado_atual = calcular_limite_utilizado(worksheet_temp, usuario_info)
-        limite_disponivel = limite_total - limite_utilizado_atual
-        
-        # Calcular impacto da nova compra
-        if parcelado == "Sim":
-            impacto_limite = valor
+        # Verificar limite disponível
+        limite_total = usuario_info.get('limite_cartao', 0)
+        if limite_total > 0:
+            worksheet_temp = get_worksheet_by_usuario(usuario_info)
+            limite_utilizado_atual = calcular_limite_utilizado(worksheet_temp, usuario_info)
+            limite_disponivel = limite_total - limite_utilizado_atual
+            
+            # Calcular impacto da nova compra
+            if parcelado == "Sim":
+                impacto_limite = valor
+            else:
+                impacto_limite = valor
+                
+            if impacto_limite > limite_disponivel:
+                erros.append(f"Limite insuficiente! Disponível: R$ {limite_disponivel:,.2f}, Necessário: R$ {impacto_limite:,.2f}")
+
+        if erros:
+            st.error("\n".join(["❌ " + erro for erro in erros]))
         else:
-            impacto_limite = valor
+            # Upload do comprovante
+            link_drive, path_comprovante = upload_to_drive(comprovante, empresa_selecionada)
             
-        if impacto_limite > limite_disponivel:
-            erros.append(f"Limite insuficiente! Disponível: R$ {limite_disponivel:,.2f}, Necessário: R$ {impacto_limite:,.2f}")
-
-    if erros:
-        st.error("\n".join(["❌ " + erro for erro in erros]))
-    else:
-        # Upload do comprovante
-        link_drive, path_comprovante = upload_to_drive(comprovante, empresa_selecionada)
-        
-        # Obter a aba específica do usuário
-        worksheet = get_worksheet_by_usuario(usuario_info)
-        
-        # Verificar se cabeçalhos existem
-        try:
-            headers_existentes = worksheet.row_values(1)
-            headers_esperados = ["Data", "Empresa", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
+            # Obter a aba específica do usuário
+            worksheet = get_worksheet_by_usuario(usuario_info)
             
-            if not headers_existentes or headers_existentes != headers_esperados:
-                if not headers_existentes:
-                    worksheet.append_row(headers_esperados)
-                else:
-                    worksheet.append_row([])
-                    worksheet.append_row(headers_esperados)
-        except Exception as e:
-            st.warning(f"Aviso ao verificar cabeçalhos: {e}")
-        
-        # Salvar no arquivo local
-        df = pd.read_excel(data_file)
-        if list(df.columns) != colunas_corretas:
-            df = df.reindex(columns=colunas_corretas)
-        
-        novas_linhas = []
-        for i in range(parcelas):
-            parcela_atual = f"{i+1}/{parcelas}" if parcelas > 1 else "1/1"
-            linha = [
-                datetime.today().strftime('%Y-%m-%d'),
-                empresa_selecionada,
-                fornecedor,
-                valor,
-                parcelado,
-                parcelas,
-                valor_parcela,
-                usuario_info['nome'],
-                parcela_atual,
-                descricao,
-                link_drive,
-                data_compra.strftime('%Y-%m-%d')
-            ]
-            novas_linhas.append(linha)
-        
-        df = pd.concat([df, pd.DataFrame(novas_linhas, columns=colunas_corretas)], ignore_index=True)
-        df.to_excel(data_file, index=False)
-        
-        # Adicionar na aba específica do usuário
-        for linha in novas_linhas:
-            worksheet.append_row(linha)
-        
-        # Enviar email se solicitado
-        if email_opcional:
-            dados_email = {
-                "Data": datetime.today().strftime('%Y-%m-%d'),
-                "Empresa": usuario_info['empresa'],
-                "Fornecedor": fornecedor,
-                "Valor Total": valor_formatado,
-                "Parcelado": parcelado,
-                "Parcelas": parcelas,
-                "Valor da Parcela": f"R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
-                "Comprador": usuario_info['nome'],
-                "Descrição": descricao,
-                "Data da Compra": data_compra.strftime('%d/%m/%Y')
-            }
-            enviar_email(email_opcional, dados_email, anexo_path=path_comprovante, anexo_nome=comprovante.name)
-        
-        st.success("✅ Compra registrada com sucesso!")
-        st.session_state["compra_salva"] = True
+            # Verificar se cabeçalhos existem
+            try:
+                headers_existentes = worksheet.row_values(1)
+                headers_esperados = ["Data", "Empresa", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
+                
+                if not headers_existentes or headers_existentes != headers_esperados:
+                    if not headers_existentes:
+                        worksheet.append_row(headers_esperados)
+                    else:
+                        worksheet.append_row([])
+                        worksheet.append_row(headers_esperados)
+            except Exception as e:
+                st.warning(f"Aviso ao verificar cabeçalhos: {e}")
+            
+            # Salvar no arquivo local
+            df = pd.read_excel(data_file)
+            if list(df.columns) != colunas_corretas:
+                df = df.reindex(columns=colunas_corretas)
+            
+            novas_linhas = []
+            for i in range(parcelas):
+                parcela_atual = f"{i+1}/{parcelas}" if parcelas > 1 else "1/1"
+                linha = [
+                    datetime.today().strftime('%Y-%m-%d'),
+                    empresa_selecionada,
+                    fornecedor,
+                    valor,
+                    parcelado,
+                    parcelas,
+                    valor_parcela,
+                    usuario_info['nome'],
+                    parcela_atual,
+                    descricao,
+                    link_drive,
+                    data_compra.strftime('%Y-%m-%d')
+                ]
+                novas_linhas.append(linha)
+            
+            df = pd.concat([df, pd.DataFrame(novas_linhas, columns=colunas_corretas)], ignore_index=True)
+            df.to_excel(data_file, index=False)
+            
+            # Adicionar na aba específica do usuário
+            for linha in novas_linhas:
+                worksheet.append_row(linha)
+            
+            # Enviar email se solicitado
+            if email_opcional:
+                dados_email = {
+                    "Data": datetime.today().strftime('%Y-%m-%d'),
+                    "Empresa": usuario_info['empresa'],
+                    "Fornecedor": fornecedor,
+                    "Valor Total": valor_formatado,
+                    "Parcelado": parcelado,
+                    "Parcelas": parcelas,
+                    "Valor da Parcela": f"R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                    "Comprador": usuario_info['nome'],
+                    "Descrição": descricao,
+                    "Data da Compra": data_compra.strftime('%d/%m/%Y')
+                }
+                enviar_email(email_opcional, dados_email, anexo_path=path_comprovante, anexo_nome=comprovante.name)
+            
+            st.success("✅ Compra registrada com sucesso!")
+            st.session_state["compra_salva"] = True
 
-# Esta parte fica FORA do if st.button
-if st.session_state.get("compra_salva", False):
-    st.markdown("---")
-    if st.button("🆕 Nova Compra"):
-        st.query_params["new"] = "1"
-        st.session_state["compra_salva"] = False
-        st.rerun()
+    # Esta parte fica FORA do if st.button
+    if st.session_state.get("compra_salva", False):
+        st.markdown("---")
+        if st.button("🆕 Nova Compra"):
+            st.query_params["new"] = "1"
+            st.session_state["compra_salva"] = False
+            st.rerun()
 
 elif menu == "Visualizar Compras":
     st.subheader(f"📊 Compras de {usuario_info['nome']}")
