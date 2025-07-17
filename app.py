@@ -55,8 +55,8 @@ PASTAS_EMPRESA = {
 # 4. Configuração de Usuários
 # ================================
 USUARIOS_CONFIG = {
-    "ana": {
-        "nome": "Ana - Facilities",
+    "ana_soier": {
+        "nome": "Ana Soier - Facilities",
         "empresa": "Moon Ventures",
         "email": "ana.soier@moonventures.com.br",
         "limite_cartao": 11000.00
@@ -581,7 +581,7 @@ if menu == "Inserir Compra":
     empresa_selecionada = usuario_info['empresa']  # Valor padrão
     
     # Verificar se o usuário é Mariana, Linhares, Bia, Marcella
-    if usuario_info['nome'] in ["Ana - Facilities", "Pedro Linhares - Logística", "Bia - Secretária", "Marcella - Compras Internas"]:
+    if usuario_info['nome'] in ["Ana Soier - Facilities", "Pedro Linhares - Logística", "Bia - Secretária", "Marcella - Compras Internas"]:
         # Opções de empresas disponíveis
         empresas_disponiveis = ["Moon Ventures", "Minimal Club", "Hoomy"]
         empresa_selecionada = st.selectbox(
