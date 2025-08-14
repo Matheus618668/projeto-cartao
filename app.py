@@ -59,7 +59,7 @@ USUARIOS_CONFIG = {
         "nome": "Ana Soier - Facilities",
         "empresa": "Moon Ventures",
         "email": "ana.soier@moonventures.com.br",
-        "limite_cartao": 11000.00
+        "limite_cartao": 100000.00
     },
     "joao": {
         "nome": "João Vicente - Marketing",
