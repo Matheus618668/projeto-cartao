@@ -89,7 +89,7 @@ USUARIOS_CONFIG = {
         "nome": "Marcella - Compras Internas",
         "empresa": "Moon Ventures",
         "email": "marcella.leo@moonventures.com.br",
-        "limite_cartao": 10000000.00
+        "limite_cartao": 100000000.00
     },
     "alice": {
         "nome": "Alice - Mkt Hoomy",
