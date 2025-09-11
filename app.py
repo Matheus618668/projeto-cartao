@@ -70,7 +70,7 @@ USUARIOS_CONFIG = {
     "guilherme": {
         "nome": "Guilherme Pettenati - Hoomy",
         "empresa": "Hoomy",
-        "email": "alice.coelho@hoomy.com.br",
+        "email": "guilherme.pettenati@hoomy.com.br",
         "limite_cartao": 8000.00
     },
     "linhares": {
