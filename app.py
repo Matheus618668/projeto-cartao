@@ -18,23 +18,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 from dateutil.relativedelta import relativedelta
-import requests # <-- NOVO: Biblioteca para buscar a cotação
-
-# ================================
-# NOVA FUNÇÃO: Buscar Cotação do Dólar
-# ================================
-@st.cache_data(ttl=3600) # Cache para evitar chamadas excessivas à API (atualiza a cada 1 hora)
-def get_dolar_cotacao():
-    """Busca a cotação atual do Dólar para Real usando a AwesomeAPI."""
-    try:
-        response = requests.get("https://economia.awesomeapi.com.br/last/USD-BRL")
-        response.raise_for_status()  # Lança um erro se a requisição falhar
-        data = response.json()
-        cotacao = float(data['USDBRL']['bid'])
-        return cotacao
-    except requests.exceptions.RequestException as e:
-        st.error(f"Erro ao buscar cotação do dólar: {e}")
-        return None # Retorna None se não conseguir buscar
 
 # ================================
 # 1. Autenticação Google Sheets e Drive
@@ -120,6 +103,7 @@ USUARIOS_CONFIG = {
         "email": "ana@moonventures.com.br",
         "limite_cartao": 4000.00
     },
+
 }
 
 # ================================
@@ -151,7 +135,7 @@ def calcular_gastos_usuario(usuario_info):
                 except:
                     return 0.0
             
-            if "Valor" in df.columns: # "Valor" aqui se refere ao valor em BRL
+            if "Valor" in df.columns:
                 df["Valor"] = df["Valor"].apply(parse_valor)
                 
                 # Remover duplicatas para não contar parcelas múltiplas vezes
@@ -205,7 +189,6 @@ def exibir_limite_cartao(usuario_info, usuario_id):
             st.progress(percentual_usado / 100)
             
             st.markdown("---")
-
 # ================================
 # 5. Função para obter usuário da URL
 # ================================
@@ -213,35 +196,49 @@ def get_usuario_from_url():
     """Obtém o usuário dos parâmetros da URL"""
     try:
         query_params = st.query_params
+        
+        # Removendo todas as mensagens de debug
+        # st.sidebar.write("🔍 Debug - Parâmetros da URL:", dict(query_params))
+        
         usuario_id = query_params.get("user", "")
         if usuario_id:
             usuario_id = usuario_id.lower().strip()
+            # st.sidebar.write(f"🔍 Debug - User ID encontrado: '{usuario_id}'")
+            
             if usuario_id in USUARIOS_CONFIG:
+                # st.sidebar.write(f"✅ Debug - Usuário válido encontrado!")
                 return usuario_id, USUARIOS_CONFIG[usuario_id]
+            else:
+                # st.sidebar.write(f"❌ Debug - Usuário '{usuario_id}' não encontrado na configuração")
+                # st.sidebar.write(f"🔍 Debug - Usuários disponíveis: {list(USUARIOS_CONFIG.keys())}")
+                pass
+        else:
+            # st.sidebar.write("❌ Debug - Nenhum parâmetro 'user' encontrado na URL")
+            pass
+            
         return None, None
+        
     except Exception as e:
+        # st.sidebar.error(f"❌ Erro ao processar URL: {e}")
         return None, None
 
 # ================================
 # 6. Função para obter a aba do usuário
 # ================================
-# <-- ATUALIZADO: Adicionadas novas colunas no cabeçalho
 def get_worksheet_by_usuario(usuario_info):
     """Cria ou obtém a aba específica do usuário"""
     nome_aba = usuario_info["nome"]
     try:
+        # Primeiro tenta encontrar a aba pelo nome do usuário
         return spreadsheet.worksheet(nome_aba)
     except gspread.exceptions.WorksheetNotFound:
         try:
+            # Se não encontrar, cria uma nova aba para o usuário
             st.info(f"Criando nova aba para {nome_aba}...")
-            worksheet = spreadsheet.add_worksheet(title=nome_aba, rows="1000", cols="25") # Aumentei o número de colunas
+            worksheet = spreadsheet.add_worksheet(title=nome_aba, rows="1000", cols="20")
             
-            # Adiciona cabeçalhos na nova aba (com as colunas de moeda)
-            headers = [
-                "Data", "Empresa", "Fornecedor", "Valor", "Parcelado", "Parcelas", 
-                "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra",
-                "Moeda", "Valor Original", "Cotação (BRL)"
-            ]
+            # Adiciona cabeçalhos na nova aba
+            headers = ["Data", "Empresa", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
             worksheet.append_row(headers)
             
             st.success(f"Aba '{nome_aba}' criada com sucesso!")
@@ -249,6 +246,7 @@ def get_worksheet_by_usuario(usuario_info):
             
         except Exception as e:
             st.error(f"Erro ao criar aba para {nome_aba}: {e}")
+            # Como último recurso, usa a primeira aba
             return spreadsheet.sheet1
     except Exception as e:
         st.error(f"Erro inesperado ao acessar a aba '{nome_aba}': {e}")
@@ -338,27 +336,33 @@ def calcular_limite_utilizado(worksheet, usuario_info, data_referencia=None):
         headers = rows[0]
         dados = rows[1:]
         
+        # Criar DataFrame
         df = pd.DataFrame(dados, columns=headers[:len(dados[0])])
         
+        # Converter valores
         def parse_valor(valor_str):
             try:
                 return float(str(valor_str).replace("R$", "").replace(".", "").replace(",", "."))
             except:
                 return 0.0
         
-        if "Valor Parcela" in df.columns: # O valor da parcela já está em BRL
+        if "Valor Parcela" in df.columns:
             df["Valor Parcela"] = df["Valor Parcela"].apply(parse_valor)
         else:
             return 0.0
         
+        # Converter datas
         if "Data da Compra" in df.columns:
             df["Data da Compra"] = pd.to_datetime(df["Data da Compra"], errors='coerce')
         else:
             return 0.0
         
+        # Filtrar apenas compras do usuário atual
         if "Comprador" in df.columns:
             df = df[df["Comprador"] == usuario_info['nome']]
         
+        # Calcular parcelas a vencer
+        from dateutil.relativedelta import relativedelta
         limite_utilizado = 0.0
         
         for idx, row in df.iterrows():
@@ -373,16 +377,22 @@ def calcular_limite_utilizado(worksheet, usuario_info, data_referencia=None):
                     continue
                 
                 parcela_atual = int(parcela_info[0])
+                total_parcelas = int(parcela_info[1])
                 valor_parcela = float(row.get("Valor Parcela", 0))
                 
+                # Calcular data de vencimento desta parcela
+                # A primeira parcela vence no próximo dia 5 após a compra
                 data_vencimento = data_compra.replace(day=5)
                 if data_vencimento <= data_compra:
                     data_vencimento = data_vencimento + relativedelta(months=1)
                 
+                # Adicionar meses para cada parcela
                 data_vencimento = data_vencimento + relativedelta(months=parcela_atual-1)
                 
+                # Se a parcela ainda não foi paga (vencimento futuro), conta no limite
                 if data_vencimento > data_referencia:
                     limite_utilizado += valor_parcela
+                    
             except Exception as e:
                 continue
         
@@ -397,6 +407,7 @@ def calcular_limite_utilizado(worksheet, usuario_info, data_referencia=None):
 # ================================
 def gerar_links_usuarios():
     """Gera links personalizados para cada usuário"""
+    # URL real do seu aplicativo
     base_url = "https://projeto-cartao-hvavcfzkhdesmg9jtrygne.streamlit.app"
 
     st.subheader("🔗 Links Personalizados dos Usuários")
@@ -407,6 +418,7 @@ def gerar_links_usuarios():
         st.markdown(f"**{info['nome']}** ({info['empresa']})")
         st.code(link)
 
+        # Botão para testar o link diretamente
         if st.button(f"🧪 Testar link do {info['nome']}", key=f"test_{usuario_id}"):
             st.query_params.update({"user": usuario_id})
             st.rerun()
@@ -417,13 +429,19 @@ def gerar_links_usuarios():
 # ================================
 # 11. App Principal
 # ================================
+
+# Verifica se há parâmetro de usuário na URL
 usuario_id, usuario_info = get_usuario_from_url()
 
+# Se não há usuário válido na URL, mostra página de configuração
 if not usuario_info:
     st.title("🔧 Configuração do Sistema")
     st.error("⚠️ Nenhum usuário válido identificado na URL.")
+    
+    # Mostra informações de debug
     current_url = st.query_params
     st.info(f"🔍 URL atual detectada: {dict(current_url)}")
+    
     st.markdown("""
     ### ❗ Problema Detectado:
     Para usar o sistema, você precisa acessar através de um link personalizado.
@@ -433,30 +451,42 @@ if not usuario_info:
     2. Os links direcionam automaticamente para a aba correta na planilha
     3. **Use os links abaixo para acessar o sistema:**
     """)
+    
     gerar_links_usuarios()
+    
     st.markdown("""
     ### 🔧 Para adicionar novos usuários:
-    Edite a configuração `USUARIOS_CONFIG` no código.
+    Edite a configuração `USUARIOS_CONFIG` no código, adicionando:
+    ```python
+    "id_usuario": {
+        "nome": "Nome Completo",
+        "empresa": "Nome da Empresa", 
+        "email": "email@empresa.com"
+    }
+    ```
+    
+    ### 🧪 Teste Rápido:
+    Tente acessar a URL atual adicionando `?user=joao` no final.
     """)
+    
+    # Botão de teste
     if st.button("🧪 Testar com usuário João"):
         st.query_params.update({"user": "joao"})
         st.rerun()
+    
     st.stop()
 
 # ================================
 # Interface Principal (usuário válido)
 # ================================
-# <-- ATUALIZADO: Adicionadas novas colunas
+
 data_file = "data/compras.xlsx"
 os.makedirs("data", exist_ok=True)
-colunas_corretas = [
-    "Data", "Empresa", "Fornecedor", "Valor", "Parcelado", "Parcelas", 
-    "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra",
-    "Moeda", "Valor Original", "Cotação (BRL)"
-]
+colunas_corretas = ["Data", "Empresa", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
 if not os.path.exists(data_file):
     pd.DataFrame(columns=colunas_corretas).to_excel(data_file, index=False)
 
+# Limpa session state se for nova compra
 if "new" in st.query_params:
     for chave in list(st.session_state.keys()):
         if chave not in ["google_service_account", "email"]:
@@ -473,6 +503,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Cabeçalho personalizado
 st.title("💳 Gestor de Compras Corporativas")
 st.markdown(f"**👤 Usuário:** {usuario_info['nome']} | **🏢 Empresa:** {usuario_info['empresa']}")
 
@@ -481,84 +512,113 @@ menu = st.sidebar.selectbox("📌 Navegação", ["Inserir Compra", "Visualizar C
 if menu == "Inserir Compra":
     st.subheader("Inserção de Dados da Compra")
     
+    # ================================
+    # Seção do Limite do Cartão
+    # ================================
     if "limite_cartao" in usuario_info:
         st.markdown("### 💳 Limite do Cartão")
+        
+        # Obter worksheet do usuário
         worksheet = get_worksheet_by_usuario(usuario_info)
+        
+        # Calcular limite utilizado
         limite_total = usuario_info.get("limite_cartao", 0)
         limite_utilizado = calcular_limite_utilizado(worksheet, usuario_info)
         limite_disponivel = limite_total - limite_utilizado
         percentual_utilizado = (limite_utilizado / limite_total * 100) if limite_total > 0 else 0
         
+        # Barra de progresso
+        progress_color = "normal"
+        if percentual_utilizado > 90:
+            progress_color = "error"
+        elif percentual_utilizado > 70:
+            progress_color = "warning"
+            
         progress = min(percentual_utilizado / 100, 1.0)
         st.progress(progress)
         
+        # Usar colunas com largura maior para evitar corte de texto
         col1, col2, col3 = st.columns([1.5, 1.5, 1.5])
-        with col1:
-            st.metric("Limite Total", f"R$ {limite_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-        with col2:
-            st.metric("Utilizado", f"R$ {limite_utilizado:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), delta=f"-{percentual_utilizado:.1f}%", delta_color="inverse")
-        with col3:
-            st.metric("Disponível", f"R$ {limite_disponivel:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
         
+        with col1:
+            st.metric(
+                "Limite Total",
+                f"R$ {limite_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+        
+        with col2:
+            st.metric(
+                "Utilizado",
+                f"R$ {limite_utilizado:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                delta=f"-{percentual_utilizado:.1f}%",
+                delta_color="inverse"
+            )
+        
+        with col3:
+            st.metric(
+                "Disponível",
+                f"R$ {limite_disponivel:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+        
+        # Avisos
         if percentual_utilizado > 90:
             st.error("⚠️ Atenção: Você está próximo do limite do cartão!")
         elif percentual_utilizado > 70:
             st.warning("⚠️ Atenção: Você já utilizou mais de 70% do seu limite.")
         
+        # Mostrar quando o limite será renovado
         hoje = datetime.now()
         proximo_vencimento = hoje.replace(day=5)
         if hoje.day >= 5:
             proximo_vencimento = (hoje.replace(day=1) + relativedelta(months=1)).replace(day=5)
+        
         dias_para_renovacao = (proximo_vencimento - hoje).days
         st.info(f"💳 Seu limite será renovado em {dias_para_renovacao} dias (dia {proximo_vencimento.strftime('%d/%m/%Y')})")
+        
         st.markdown("---")
     
-    empresa_selecionada = usuario_info['empresa']
+    # Permitir seleção de empresa apenas para Mariana e Linhares
+    empresa_selecionada = usuario_info['empresa']  # Valor padrão
+    
+    # Verificar se o usuário é Mariana, Linhares, Bia, Marcella
     if usuario_info['nome'] in ["Ana Soier - Facilities", "Pedro Linhares - Logística", "Bia - Secretária", "Marcella - Compras Internas"]:
+        # Opções de empresas disponíveis
         empresas_disponiveis = ["Moon Ventures", "Minimal Club", "Hoomy"]
-        empresa_selecionada = st.selectbox("🏢 Selecione a empresa para esta compra:", options=empresas_disponiveis, index=empresas_disponiveis.index(usuario_info['empresa']) if usuario_info['empresa'] in empresas_disponiveis else 0)
+        empresa_selecionada = st.selectbox(
+            "🏢 Selecione a empresa para esta compra:",
+            options=empresas_disponiveis,
+            index=empresas_disponiveis.index(usuario_info['empresa']) if usuario_info['empresa'] in empresas_disponiveis else 0
+        )
     else:
+        # Para outros usuários, mostrar apenas sua empresa fixa
         st.markdown(f"🏢 **Empresa:** {usuario_info['empresa']}")
     
-    campos = {"fornecedor": "", "valor_str": "", "parcelado": "Não", "parcelas": 1, "descricao": "", "email_opcional": ""}
+    campos = {
+        "fornecedor": "",
+        "valor_str": "",
+        "parcelado": "Não",
+        "parcelas": 1,
+        "descricao": "",
+        "email_opcional": ""
+    }
+
     for campo, valor_inicial in campos.items():
         if campo not in st.session_state:
             st.session_state[campo] = valor_inicial
 
+    # Campos do formulário (empresa e comprador são preenchidos automaticamente)
     data_compra = st.date_input("📅 Data da Compra", value=date.today())
     fornecedor = st.text_input("📦 Nome do Fornecedor", key="fornecedor")
-    
-    # <-- INÍCIO DAS MUDANÇAS PARA DÓLAR -->
-    col_moeda, col_valor = st.columns([1, 2])
-    with col_moeda:
-        moeda = st.selectbox("Moeda", ["BRL", "USD"])
-    with col_valor:
-        valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80", key="valor_str")
-
-    cotacao_dolar = None
-    valor_convertido_brl = 0.0
-    valor_original = 0.0
+    valor_str = st.text_input("💰 Valor da Compra (total)", placeholder="Ex: 399,80", key="valor_str")
 
     try:
-        valor_original = float(valor_str.replace(",", "."))
-    except (ValueError, AttributeError):
-        valor_original = 0.0
+        valor_float = float(valor_str.replace("R$", "").replace(".", "").replace(",", "."))
+    except:
+        valor_float = 0.0
 
-    if moeda == "USD":
-        cotacao_dolar = get_dolar_cotacao()
-        if cotacao_dolar:
-            valor_convertido_brl = valor_original * cotacao_dolar
-            st.info(f"Cotação do Dólar: R$ {cotacao_dolar:,.2f} | Valor em BRL: R$ {valor_convertido_brl:,.2f}")
-        else:
-            st.error("Não foi possível obter a cotação do dólar. O valor não será convertido.")
-            valor_convertido_brl = valor_original # Fallback
-    else:
-        valor_convertido_brl = valor_original
-
-    valor_final_brl = valor_convertido_brl
-    valor_formatado = f"R$ {valor_final_brl:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    st.markdown(f"🔎 Valor final (BRL) que será registrado: **{valor_formatado}**")
-    # <-- FIM DAS MUDANÇAS PARA DÓLAR -->
+    valor = valor_float
+    valor_formatado = f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    st.markdown(f"🔎 Valor interpretado: **{valor_formatado}**")
 
     parcelado = st.radio("💳 Foi parcelado?", ["Não", "Sim"], key="parcelado")
     if parcelado == "Sim":
@@ -566,7 +626,7 @@ if menu == "Inserir Compra":
     else:
         parcelas = 1
 
-    valor_parcela = valor_final_brl / parcelas if parcelas > 0 else 0.0
+    valor_parcela = valor / parcelas if parcelas > 0 else 0.0
     st.markdown(f"💵 **Valor de cada parcela:** R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
     email_opcional = st.text_input("📧 E-mail (opcional)", value=usuario_info['email'], key="email_opcional")
@@ -575,30 +635,59 @@ if menu == "Inserir Compra":
 
     if st.button("✅ Salvar Compra"):
         erros = []
-        if not fornecedor: erros.append("Fornecedor não informado.")
-        if valor_final_brl <= 0: erros.append("Valor deve ser maior que zero.")
-        if not descricao: erros.append("Descrição da compra não informada.")
-        if not comprovante: erros.append("Comprovante não anexado.")
-        if moeda == "USD" and not cotacao_dolar: erros.append("Não foi possível obter a cotação do dólar para salvar.")
+        if not fornecedor: 
+            erros.append("Fornecedor não informado.")
+        if valor <= 0: 
+            erros.append("Valor deve ser maior que zero.")
+        if not descricao: 
+            erros.append("Descrição da compra não informada.")
+        if not comprovante: 
+            erros.append("Comprovante não anexado.")
 
+        # Verificar limite disponível
         limite_total = usuario_info.get('limite_cartao', 0)
         if limite_total > 0:
             worksheet_temp = get_worksheet_by_usuario(usuario_info)
             limite_utilizado_atual = calcular_limite_utilizado(worksheet_temp, usuario_info)
             limite_disponivel = limite_total - limite_utilizado_atual
             
-            impacto_limite = valor_final_brl
-            
+            # Calcular impacto da nova compra
+            if parcelado == "Sim":
+                impacto_limite = valor
+            else:
+                impacto_limite = valor
+                
             if impacto_limite > limite_disponivel:
                 erros.append(f"Limite insuficiente! Disponível: R$ {limite_disponivel:,.2f}, Necessário: R$ {impacto_limite:,.2f}")
 
         if erros:
             st.error("\n".join(["❌ " + erro for erro in erros]))
         else:
+            # Upload do comprovante
             link_drive, path_comprovante = upload_to_drive(comprovante, empresa_selecionada)
+            
+            # Obter a aba específica do usuário
             worksheet = get_worksheet_by_usuario(usuario_info)
             
-            # <-- ATUALIZADO: Adiciona novas informações na linha a ser salva
+            # Verificar se cabeçalhos existem
+            try:
+                headers_existentes = worksheet.row_values(1)
+                headers_esperados = ["Data", "Empresa", "Fornecedor", "Valor", "Parcelado", "Parcelas", "Valor Parcela", "Comprador", "Parcela", "Descrição", "Comprovante", "Data da Compra"]
+                
+                if not headers_existentes or headers_existentes != headers_esperados:
+                    if not headers_existentes:
+                        worksheet.append_row(headers_esperados)
+                    else:
+                        worksheet.append_row([])
+                        worksheet.append_row(headers_esperados)
+            except Exception as e:
+                st.warning(f"Aviso ao verificar cabeçalhos: {e}")
+            
+            # Salvar no arquivo local
+            df = pd.read_excel(data_file)
+            if list(df.columns) != colunas_corretas:
+                df = df.reindex(columns=colunas_corretas)
+            
             novas_linhas = []
             for i in range(parcelas):
                 parcela_atual = f"{i+1}/{parcelas}" if parcelas > 1 else "1/1"
@@ -606,7 +695,7 @@ if menu == "Inserir Compra":
                     datetime.today().strftime('%Y-%m-%d'),
                     empresa_selecionada,
                     fornecedor,
-                    valor_final_brl,
+                    valor,
                     parcelado,
                     parcelas,
                     valor_parcela,
@@ -614,40 +703,37 @@ if menu == "Inserir Compra":
                     parcela_atual,
                     descricao,
                     link_drive,
-                    data_compra.strftime('%Y-%m-%d'),
-                    moeda, # Nova coluna
-                    valor_original, # Nova coluna
-                    cotacao_dolar if cotacao_dolar else "" # Nova coluna
+                    data_compra.strftime('%Y-%m-%d')
                 ]
                 novas_linhas.append(linha)
-            
-            df = pd.read_excel(data_file)
-            if list(df.columns) != colunas_corretas:
-                df = df.reindex(columns=colunas_corretas)
             
             df = pd.concat([df, pd.DataFrame(novas_linhas, columns=colunas_corretas)], ignore_index=True)
             df.to_excel(data_file, index=False)
             
+            # Adicionar na aba específica do usuário
             for linha in novas_linhas:
                 worksheet.append_row(linha)
             
+            # Enviar email se solicitado
             if email_opcional:
                 dados_email = {
                     "Data": datetime.today().strftime('%Y-%m-%d'),
                     "Empresa": usuario_info['empresa'],
                     "Fornecedor": fornecedor,
-                    "Valor Total": f"{moeda} {valor_original:,.2f}" if moeda == "USD" else f"R$ {valor_final_brl:,.2f}",
-                    "Cotação Utilizada": f"R$ {cotacao_dolar:,.2f}" if cotacao_dolar else "N/A",
-                    "Valor Final em BRL": valor_formatado,
+                    "Valor Total": valor_formatado,
+                    "Parcelado": parcelado,
                     "Parcelas": parcelas,
+                    "Valor da Parcela": f"R$ {valor_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
                     "Comprador": usuario_info['nome'],
                     "Descrição": descricao,
+                    "Data da Compra": data_compra.strftime('%d/%m/%Y')
                 }
                 enviar_email(email_opcional, dados_email, anexo_path=path_comprovante, anexo_nome=comprovante.name)
             
             st.success("✅ Compra registrada com sucesso!")
             st.session_state["compra_salva"] = True
 
+    # Esta parte fica FORA do if st.button
     if st.session_state.get("compra_salva", False):
         st.markdown("---")
         if st.button("🆕 Nova Compra"):
@@ -657,16 +743,19 @@ if menu == "Inserir Compra":
 
 elif menu == "Visualizar Compras":
     st.subheader(f"📊 Compras de {usuario_info['nome']}")
+    
+    # Exibir limite do cartão
     exibir_limite_cartao(usuario_info, usuario_id)
     
     try:
         worksheet = get_worksheet_by_usuario(usuario_info)
         rows = worksheet.get_all_values()
         
-        if len(rows) > 1:
+        if len(rows) > 1:  # Se há dados além do cabeçalho
             headers = rows[0]
             dados = rows[1:]
             
+            # Garante que temos o número correto de colunas
             dados_limpos = []
             for linha in dados:
                 if len(linha) < len(headers):
@@ -677,52 +766,50 @@ elif menu == "Visualizar Compras":
 
             def parse_valor(valor_str):
                 try:
-                    return float(str(valor_str).replace(",", ".")) # Ajuste para aceitar o formato da API
+                    return float(str(valor_str).replace("R$", "").replace(".", "").replace(",", "."))
                 except:
                     return 0.0
-            
-            # <-- ATUALIZADO: Converte também as novas colunas
-            colunas_valor = ["Valor", "Valor Parcela", "Valor Original", "Cotação (BRL)"]
-            for col in colunas_valor:
-                if col in df.columns:
-                    df[col] = df[col].apply(parse_valor)
 
+            if "Valor" in df.columns:
+                df["Valor"] = df["Valor"].apply(parse_valor)
+            if "Valor Parcela" in df.columns:
+                df["Valor Parcela"] = df["Valor Parcela"].apply(parse_valor)
+
+            # Filtros
             col1, col2 = st.columns(2)
             with col1:
                 if "Fornecedor" in df.columns:
                     filtro_fornecedor = st.selectbox("Filtrar por Fornecedor:", options=["Todos"] + sorted(df["Fornecedor"].dropna().unique().tolist()))
-                else: filtro_fornecedor = "Todos"
+                else:
+                    filtro_fornecedor = "Todos"
             with col2:
                 if "Data da Compra" in df.columns:
                     datas_unicas = sorted(df["Data da Compra"].dropna().unique().tolist(), reverse=True)
                     filtro_data = st.selectbox("Filtrar por Data:", options=["Todas"] + datas_unicas)
-                else: filtro_data = "Todas"
+                else:
+                    filtro_data = "Todas"
 
+            # Aplicar filtros
             if filtro_fornecedor != "Todos" and "Fornecedor" in df.columns:
                 df = df[df["Fornecedor"] == filtro_fornecedor]
             if filtro_data != "Todas" and "Data da Compra" in df.columns:
                 df = df[df["Data da Compra"] == filtro_data]
 
-            # <-- ATUALIZADO: Formata as novas colunas para exibição
+            # Formatar valores para exibição
             df_exibicao = df.copy()
-            df_exibicao["Valor"] = df_exibicao["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-            df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-            df_exibicao["Valor Original"] = df_exibicao["Valor Original"].apply(lambda x: f"{x:,.2f}")
-            df_exibicao["Cotação (BRL)"] = df_exibicao["Cotação (BRL)"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x > 0 else "")
-            
-            # Reordenar colunas para melhor visualização
-            ordem_colunas = [
-                "Data da Compra", "Fornecedor", "Descrição", "Moeda", "Valor Original", 
-                "Cotação (BRL)", "Valor", "Parcela", "Valor Parcela", "Comprovante"
-            ]
-            colunas_existentes_reordenadas = [col for col in ordem_colunas if col in df_exibicao.columns]
-            
-            st.dataframe(df_exibicao[colunas_existentes_reordenadas], use_container_width=True)
+            if "Valor" in df_exibicao.columns:
+                df_exibicao["Valor"] = df_exibicao["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
+            if "Valor Parcela" in df_exibicao.columns:
+                df_exibicao["Valor Parcela"] = df_exibicao["Valor Parcela"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if x else "")
 
+            st.dataframe(df_exibicao, use_container_width=True)
+
+            # Resumo financeiro
             if not df.empty and "Valor" in df.columns:
                 st.markdown("---")
                 st.markdown("### 💰 Resumo Financeiro")
                 
+                # Remove duplicatas para não contar parcelas múltiplas vezes
                 colunas_para_remover_duplicatas = ["Data", "Fornecedor", "Valor", "Comprador"]
                 colunas_existentes = [col for col in colunas_para_remover_duplicatas if col in df.columns]
                 
@@ -739,13 +826,17 @@ elif menu == "Visualizar Compras":
                         valor_medio = total_gasto / len(df_unico) if len(df_unico) > 0 else 0
                         st.metric("Valor Médio", f"R$ {valor_medio:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
                 
+                # Gráfico de gastos por fornecedor
                 if "Fornecedor" in df.columns:
                     st.markdown("### 📊 Gastos por Fornecedor")
                     grafico_fornecedor = df_unico.groupby("Fornecedor")["Valor"].sum().reset_index()
                     grafico_fornecedor = grafico_fornecedor.sort_values("Valor", ascending=False)
+                    
                     st.bar_chart(data=grafico_fornecedor, x="Fornecedor", y="Valor")
+                
         else:
             st.info(f"Nenhuma compra registrada ainda para {usuario_info['nome']}.")
+            
     except Exception as e:
         st.error(f"Erro ao carregar suas compras: {e}")
 
