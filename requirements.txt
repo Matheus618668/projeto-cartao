@@ -50,5 +50,4 @@ typing_extensions==4.11.0
 tzdata==2024.1
 urllib3==2.2.1
 watchdog==4.0.0
-webdriver-manager==4.0.1
 plotly==5.21.0
