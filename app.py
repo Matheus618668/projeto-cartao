@@ -260,13 +260,49 @@ def get_worksheet_by_usuario(usuario_info):
 # ================================
 # 7. Função para upload no Google Drive
 # ================================
+# Linha 263
 def upload_to_drive(file, empresa):
     # Linha 264 (com 4 espaços de recuo)
     folder_id = PASTAS_EMPRESA.get(empresa)
     if not folder_id:
         st.error(f"❌ ID da pasta não encontrado para a empresa: {empresa}")
         st.stop()
-    # ... resto da função
+
+
+with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.name)[-1]) as tmp:
+tmp.write(file.read())
+tmp_path = tmp.name
+
+
+filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.name}"
+
+
+try:
+file_metadata = {
+"name": filename,
+"parents": [folder_id]
+}
+media = MediaFileUpload(tmp_path, resumable=True)
+uploaded_file = drive_service.files().create(
+body=file_metadata,
+media_body=media,
+fields="id, webViewLink"
+).execute()
+
+
+# Tornar o arquivo público (qualquer um com o link pode visualizar)
+drive_service.permissions().create(
+fileId=uploaded_file["id"],
+body={"role": "reader", "type": "anyone"},
+).execute()
+
+
+return uploaded_file["webViewLink"], tmp_path
+
+
+except Exception as e:
+st.error(f"❌ Erro ao fazer upload para o Drive: {e}")
+st.stop()
 
 
 with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.name)[-1]) as tmp:
