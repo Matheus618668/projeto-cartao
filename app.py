@@ -3,14 +3,13 @@ import streamlit as st
 # ✅ CONFIGURAÇÃO DA PÁGINA — PRIMEIRO COMANDO DO STREAMLIT
 st.set_page_config(page_title="Validador de Compras", layout="centered")
 
-# Agora sim pode seguir o resto
 import pandas as pd
 import os
 from datetime import datetime, date
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
+from google.oauth2.service_account import Credentials  # substitui oauth2client
+from googleapiclient.discovery import build            # substitui PyDrive
+from googleapiclient.http import MediaFileUpload       # substitui PyDrive
 import tempfile
 import smtplib
 from email.mime.text import MIMEText
@@ -18,6 +17,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 from dateutil.relativedelta import relativedelta
+
 
 # ================================
 # 1. Autenticação Google Sheets e Drive
