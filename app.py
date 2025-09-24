@@ -1,15 +1,17 @@
 import streamlit as st
 
+
 # ✅ CONFIGURAÇÃO DA PÁGINA — PRIMEIRO COMANDO DO STREAMLIT
 st.set_page_config(page_title="Validador de Compras", layout="centered")
+
 
 import pandas as pd
 import os
 from datetime import datetime, date
 import gspread
-from google.oauth2.service_account import Credentials  # substitui oauth2client
-from googleapiclient.discovery import build            # substitui PyDrive
-from googleapiclient.http import MediaFileUpload       # substitui PyDrive
+from google.oauth2.service_account import Credentials # substitui oauth2client
+from googleapiclient.discovery import build # substitui PyDrive
+from googleapiclient.http import MediaFileUpload # substitui PyDrive
 import tempfile
 import smtplib
 from email.mime.text import MIMEText
@@ -19,22 +21,24 @@ from email import encoders
 from dateutil.relativedelta import relativedelta
 
 
+
+
 # ================================
 # 1. Autenticação Google Sheets e Drive
 # ================================
 scope = [
-    "https://spreadsheets.google.com/feeds",
-    "https://www.googleapis.com/auth/drive",
-    "https://www.googleapis.com/auth/drive.file"
+"https://spreadsheets.google.com/feeds",
+"https://www.googleapis.com/auth/drive",
+"https://www.googleapis.com/auth/drive.file"
 ]
 credentials_dict = st.secrets["google_service_account"]
-credentials = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+credentials = Credentials.from_service_account_info(credentials_dict, scopes=scope)
 gc = gspread.authorize(credentials)
 
-# PyDrive auth
-gauth = GoogleAuth()
-gauth.credentials = credentials
-drive = GoogleDrive(gauth)
+
+# Google Drive service
+drive_service = build("drive", "v3", credentials=credentials)
+
 
 # ================================
 # 2. Google Sheets
@@ -42,13 +46,14 @@ drive = GoogleDrive(gauth)
 SHEET_ID = "1CcrV5Gs3LwrLXgjLBgk2M02SAnDVJGuHhqY_pi56Mnw"
 spreadsheet = gc.open_by_key(SHEET_ID)
 
+
 # ================================
 # 3. IDs das pastas fixas no Google Drive (por empresa)
 # ================================
 PASTAS_EMPRESA = {
-    "Moon Ventures": "1pVdro4IFN08GEUSaCYDOwvS5dTCNAl41",
-    "Minimal Club": "1c_lrNDj3s18j_vlGQCJLWjXYno9JgFrT",
-    "Hoomy": "1wBwFFxuEYBnuPyMY13cH0zKEMqZtHDd9"
+"Moon Ventures": "1pVdro4IFN08GEUSaCYDOwvS5dTCNAl41",
+"Minimal Club": "1c_lrNDj3s18j_vlGQCJLWjXYno9JgFrT",
+"Hoomy": "1wBwFFxuEYBnuPyMY13cH0zKEMqZtHDd9"
 }
 
 # ================================
@@ -256,31 +261,46 @@ def get_worksheet_by_usuario(usuario_info):
 # 7. Função para upload no Google Drive
 # ================================
 def upload_to_drive(file, empresa):
-    folder_id = PASTAS_EMPRESA.get(empresa)
-    if not folder_id:
-        st.error(f"❌ ID da pasta não encontrado para a empresa: {empresa}")
-        st.stop()
+folder_id = PASTAS_EMPRESA.get(empresa)
+if not folder_id:
+st.error(f"❌ ID da pasta não encontrado para a empresa: {empresa}")
+st.stop()
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.name)[-1]) as tmp:
-        tmp.write(file.read())
-        tmp_path = tmp.name
 
-    filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.name}"
+with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.name)[-1]) as tmp:
+tmp.write(file.read())
+tmp_path = tmp.name
 
-    try:
-        gfile = drive.CreateFile({'title': filename, 'parents': [{'id': folder_id}]})
-        gfile.SetContentFile(tmp_path)
-        gfile.Upload()
-        gfile.InsertPermission({
-            'type': 'anyone',
-            'value': 'anyone',
-            'role': 'reader'
-        })
-        return gfile['alternateLink'], tmp_path
 
-    except Exception as e:
-        st.error(f"❌ Erro ao fazer upload para o Drive: {e}")
-        st.stop()
+filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.name}"
+
+
+try:
+file_metadata = {
+"name": filename,
+"parents": [folder_id]
+}
+media = MediaFileUpload(tmp_path, resumable=True)
+uploaded_file = drive_service.files().create(
+body=file_metadata,
+media_body=media,
+fields="id, webViewLink"
+).execute()
+
+
+# Tornar o arquivo público (qualquer um com o link pode visualizar)
+drive_service.permissions().create(
+fileId=uploaded_file["id"],
+body={"role": "reader", "type": "anyone"},
+).execute()
+
+
+return uploaded_file["webViewLink"], tmp_path
+
+
+except Exception as e:
+st.error(f"❌ Erro ao fazer upload para o Drive: {e}")
+st.stop()
 
 # ================================
 # 8. Envio de Email com Anexo
