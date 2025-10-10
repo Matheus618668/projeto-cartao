@@ -97,10 +97,10 @@ USUARIOS_CONFIG = {
         "email": "alice.coelho@hoomy.com.br",
         "limite_cartao": 4000.00
     },
-    "ana_laura": {
-        "nome": "Ana - Produtos",
+    "Priscila": {
+        "nome": "Priscila - Produtos",
         "empresa": "Moon Ventures",
-        "email": "ana@moonventures.com.br",
+        "email": "Priscila@moonventures.com.br",
         "limite_cartao": 4000.00
     },
 
