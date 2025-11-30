@@ -77,7 +77,7 @@ USUARIOS_CONFIG = {
         "nome": "Pedro Linhares - Logística",
         "empresa": "Moon Ventures",
         "email": "logistica@moonventures.com.br",
-        "limite_cartao": 7500.00
+        "limite_cartao": 30000.00
     },
     "beatriz": {
         "nome": "Bia - Secretária",
