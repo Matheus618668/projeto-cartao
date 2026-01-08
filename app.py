@@ -105,7 +105,7 @@ USUARIOS_CONFIG = {
     },
 
     "amanda": {
-        "nome": "Amanda - Loja Fisica",
+        "nome": "Amanda - Loja",
         "empresa": "Minimal Club",
         "email": "amanda.martins@minimalclub.com.br",
         "limite_cartao": 10000.00
