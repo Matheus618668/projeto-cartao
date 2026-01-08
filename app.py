@@ -103,7 +103,6 @@ USUARIOS_CONFIG = {
         "email": "Priscila@moonventures.com.br",
         "limite_cartao": 4000.00
     },
-
     "amanda": {
         "nome": "Amanda - Loja",
         "empresa": "Minimal Club",
